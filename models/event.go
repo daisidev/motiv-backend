@@ -1,0 +1,38 @@
+
+package models
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type EventStatus string
+
+const (
+	DraftEvent     EventStatus = "draft"
+	ActiveEvent    EventStatus = "active"
+	CancelledEvent EventStatus = "cancelled"
+)
+
+type Event struct {
+	gorm.Model
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;"`
+	Title          string    `gorm:"not null"`
+	Description    string
+	StartDate      time.Time `gorm:"not null"`
+	StartTime      string    `gorm:"not null"`
+	EndTime        string    `gorm:"not null"`
+	Location       string    `gorm:"not null"`
+	Tags           string    // Store as comma-separated string or JSON
+	BannerImageURL string
+	HostID         uuid.UUID `gorm:"type:uuid;not null"`
+	Host           User      `gorm:"foreignKey:HostID"`
+	Status         EventStatus `gorm:"type:event_status;not null"`
+}
+
+func (e *Event) BeforeCreate(tx *gorm.DB) (err error) {
+	e.ID = uuid.New()
+	return
+}
