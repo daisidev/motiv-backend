@@ -29,7 +29,7 @@ type Event struct {
 	BannerImageURL string
 	HostID         uuid.UUID `gorm:"type:uuid;not null"`
 	Host           User      `gorm:"foreignKey:HostID"`
-	Status         EventStatus `gorm:"type:event_status;not null"`
+	Status         EventStatus `gorm:"type:varchar(20);not null;default:'draft'"`
 }
 
 func (e *Event) BeforeCreate(tx *gorm.DB) (err error) {

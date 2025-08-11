@@ -22,7 +22,7 @@ type User struct {
 	Email    string    `gorm:"unique;not null"`
 	Password string    `gorm:"not null"`
 	Avatar   string
-	Role     UserRole `gorm:"type:user_role;not null"`
+	Role     UserRole `gorm:"type:varchar(20);not null;default:'guest'"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {

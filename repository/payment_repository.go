@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"time"
-
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
