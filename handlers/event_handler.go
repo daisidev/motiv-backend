@@ -2,6 +2,9 @@
 package handlers
 
 import (
+	"log"
+	"strconv"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -18,14 +21,37 @@ func NewEventHandler(eventService services.EventService) *EventHandler {
 	return &EventHandler{eventService}
 }
 
-// GetAllEvents handles retrieving all events
+// GetAllEvents handles retrieving all events with pagination
 func (h *EventHandler) GetAllEvents(c *fiber.Ctx) error {
-	events, err := h.eventService.GetAllEvents()
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "12"))
+	search := c.Query("search", "")
+	tags := c.Query("tags", "")
+	location := c.Query("location", "")
+
+	// Validate pagination parameters
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 12
+	}
+
+	params := services.EventQueryParams{
+		Page:     page,
+		Limit:    limit,
+		Search:   search,
+		Tags:     tags,
+		Location: location,
+	}
+
+	result, err := h.eventService.GetAllEventsWithPagination(params)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get events"})
 	}
 
-	return c.JSON(events)
+	return c.JSON(result)
 }
 
 // GetEventByID handles retrieving an event by its ID
@@ -71,7 +97,9 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 
 	var newEvent models.Event
 	if err := c.BodyParser(&newEvent); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+		// Log the detailed error to the console
+		log.Printf("Error parsing request body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request: " + err.Error()})
 	}
 
 	newEvent.HostID = hostID

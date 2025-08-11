@@ -8,6 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/google/uuid v1.3.0
 	github.com/joho/godotenv v1.4.0
+	github.com/lib/pq v1.10.2
 	golang.org/x/crypto v0.3.0
 	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.24.2

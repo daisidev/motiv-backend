@@ -1,4 +1,3 @@
-
 openapi: 3.0.0
 info:
   title: Motiv API
@@ -9,6 +8,23 @@ servers:
   - url: /api/v1
 
 paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  version:
+                    type: string
   /auth/signup:
     post:
       summary: User signup
@@ -148,18 +164,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/Event'
 
-  /hosts/me/dashboard:
+  /events/{id}/reviews:
     get:
-      summary: Get dashboard stats for the logged-in host
-      security:
-        - bearerAuth: []
+      summary: Get reviews for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: Dashboard statistics
+          description: A list of reviews
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HostDashboard'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+
+  /events/{id}/analytics:
+    get:
+      summary: Get analytics for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventAnalytics'
+
+  /events/{id}/revenue:
+    get:
+      summary: Get revenue for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event revenue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalRevenue:
+                    type: number
+
+  /events/{id}/view:
+    post:
+      summary: Record a view for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event view recorded
 
   /hosts/me/events:
     get:
@@ -231,9 +303,164 @@ paths:
         '204':
           description: Event deleted successfully
 
-  /hosts/me/events/{id}/attendees:
+  /hosts/me/analytics/dashboard:
     get:
-      summary: Get attendees for an event
+      summary: Get dashboard stats for the logged-in host
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostAnalytics'
+
+  /hosts/me/analytics/revenue:
+    get:
+      summary: Get monthly revenue for the logged-in host
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Monthly revenue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    month:
+                      type: string
+                    revenue:
+                      type: number
+
+  /hosts/me/reviews:
+    get:
+      summary: Get reviews for the logged-in host
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+
+  /hosts/me/payments/earnings:
+    get:
+      summary: Get earnings for the logged-in host
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Host earnings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalEarnings:
+                    type: number
+                  pendingPayout:
+                    type: number
+                  lastPayout:
+                    type: number
+
+  /hosts/me/payments/payouts:
+    get:
+      summary: Get payouts for the logged-in host
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of payouts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payout'
+
+  /hosts/me/payments/pending:
+    get:
+      summary: Get pending payouts for the logged-in host
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of pending payouts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payout'
+
+  /reviews:
+    post:
+      summary: Create a new review
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewReview'
+      responses:
+        '201':
+          description: Review created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+
+  /reviews/{id}:
+    put:
+      summary: Update a review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReview'
+      responses:
+        '200':
+          description: Review updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+    delete:
+      summary: Delete a review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Review deleted successfully
+
+  /reviews/{id}/helpful:
+    post:
+      summary: Mark a review as helpful
       security:
         - bearerAuth: []
       parameters:
@@ -244,13 +471,7 @@ paths:
             type: string
       responses:
         '200':
-          description: A list of attendees
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
+          description: Review marked as helpful
 
   /tickets/purchase:
     post:
@@ -270,6 +491,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Ticket'
+
+  /payments/webhook:
+    post:
+      summary: Payment webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook received
 
 components:
   securitySchemes:
@@ -457,12 +691,128 @@ components:
         quantity:
           type: integer
 
-    HostDashboard:
+    Review:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+        comment:
+          type: string
+        helpful:
+          type: integer
+
+    NewReview:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+        comment:
+          type: string
+
+    UpdateReview:
+      type: object
+      properties:
+        rating:
+          type: integer
+        comment:
+          type: string
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticketId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        method:
+          type: string
+          enum: [bank_transfer, card, wallet]
+        reference:
+          type: string
+        processedAt:
+          type: string
+          format: date-time
+        failureReason:
+          type: string
+
+    Payout:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        hostId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        method:
+          type: string
+          enum: [bank_transfer, card, wallet]
+        reference:
+          type: string
+        processedAt:
+          type: string
+          format: date-time
+        payoutDate:
+          type: string
+          format: date-time
+
+    EventAnalytics:
+      type: object
+      properties:
+        totalViews:
+          type: integer
+        uniqueViews:
+          type: integer
+        ticketsSold:
+          type: integer
+        revenue:
+          type: number
+        conversionRate:
+          type: number
+        wishlistAdds:
+          type: integer
+
+    HostAnalytics:
+      type: object
+      properties:
+        totalEvents:
+          type: integer
         totalRevenue:
           type: number
-        totalRaves:
-          type: integer
         totalAttendees:
           type: integer
+        totalViews:
+          type: integer
+        averageRating:
+          type: number

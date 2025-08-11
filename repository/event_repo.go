@@ -11,6 +11,7 @@ type EventRepository interface {
 	GetEventByID(id uuid.UUID) (*models.Event, error)
 	GetEventsByHostID(hostID uuid.UUID) ([]*models.Event, error)
 	GetAllEvents() ([]*models.Event, error)
+	GetAllEventsWithPagination(page, limit int, search, tags, location string) ([]*models.Event, int, error)
 	UpdateEvent(event *models.Event) error
 	DeleteEvent(id uuid.UUID) error
 }
