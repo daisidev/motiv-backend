@@ -8,5 +8,6 @@ import (
 
 type WishlistRepository interface {
 	AddToWishlist(wishlist *models.Wishlist) error
+	RemoveFromWishlist(userID, eventID uuid.UUID) error
 	GetWishlistByUserID(userID uuid.UUID) ([]*models.Event, error)
 }

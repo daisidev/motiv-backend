@@ -19,6 +19,10 @@ func (r *wishlistRepoPG) AddToWishlist(wishlist *models.Wishlist) error {
 	return r.db.Create(wishlist).Error
 }
 
+func (r *wishlistRepoPG) RemoveFromWishlist(userID, eventID uuid.UUID) error {
+	return r.db.Where("user_id = ? AND event_id = ?", userID, eventID).Delete(&models.Wishlist{}).Error
+}
+
 func (r *wishlistRepoPG) GetWishlistByUserID(userID uuid.UUID) ([]*models.Event, error) {
 	var events []*models.Event
 	err := r.db.Table("events").

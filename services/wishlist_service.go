@@ -9,6 +9,7 @@ import (
 
 type WishlistService interface {
 	AddToWishlist(wishlist *models.Wishlist) error
+	RemoveFromWishlist(userID, eventID uuid.UUID) error
 	GetWishlistByUserID(userID uuid.UUID) ([]*models.Event, error)
 }
 
@@ -22,6 +23,10 @@ func NewWishlistService(wishlistRepo repository.WishlistRepository) WishlistServ
 
 func (s *wishlistService) AddToWishlist(wishlist *models.Wishlist) error {
 	return s.wishlistRepo.AddToWishlist(wishlist)
+}
+
+func (s *wishlistService) RemoveFromWishlist(userID, eventID uuid.UUID) error {
+	return s.wishlistRepo.RemoveFromWishlist(userID, eventID)
 }
 
 func (s *wishlistService) GetWishlistByUserID(userID uuid.UUID) ([]*models.Event, error) {

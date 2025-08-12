@@ -110,7 +110,7 @@ func (h *UserHandler) AddToMyWishlist(c *fiber.Ctx) error {
 	}
 
 	var request struct {
-		EventID string `json:"eventId"`
+		EventID string `json:"event_id"`
 	}
 
 	if err := c.BodyParser(&request); err != nil {
@@ -129,6 +129,33 @@ func (h *UserHandler) AddToMyWishlist(c *fiber.Ctx) error {
 
 	if err := h.wishlistService.AddToWishlist(wishlist); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to add to wishlist"})
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+// RemoveFromMyWishlist handles removing an event from the current user's wishlist
+func (h *UserHandler) RemoveFromMyWishlist(c *fiber.Ctx) error {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	// Get event_id from query parameter
+	eventIDStr := c.Query("event_id")
+	if eventIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "event_id query parameter is required"})
+	}
+
+	eventID, err := uuid.Parse(eventIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
+	}
+
+	if err := h.wishlistService.RemoveFromWishlist(userID, eventID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to remove from wishlist"})
 	}
 
 	return c.SendStatus(fiber.StatusOK)

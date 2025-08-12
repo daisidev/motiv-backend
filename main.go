@@ -94,6 +94,7 @@ func main() {
 	user.Get("/me/tickets", userHandler.GetMyTickets)
 	user.Get("/me/wishlist", userHandler.GetMyWishlist)
 	user.Post("/me/wishlist", userHandler.AddToMyWishlist)
+	user.Delete("/me/wishlist", userHandler.RemoveFromMyWishlist)
 
 	// Event routes
 	event := api.Group("/events")
