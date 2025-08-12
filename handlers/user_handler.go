@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -117,8 +118,13 @@ func (h *UserHandler) AddToMyWishlist(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
+	// Debug logging
+	fmt.Printf("AddToMyWishlist - Received EventID: '%s'\n", request.EventID)
+	fmt.Printf("AddToMyWishlist - EventID length: %d\n", len(request.EventID))
+
 	eventID, err := uuid.Parse(request.EventID)
 	if err != nil {
+		fmt.Printf("AddToMyWishlist - UUID Parse Error: %v\n", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
 	}
 

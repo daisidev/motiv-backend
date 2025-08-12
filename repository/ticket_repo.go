@@ -10,4 +10,9 @@ type TicketRepository interface {
 	CreateTicket(ticket *models.Ticket) error
 	GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error)
 	GetTicketByID(id uuid.UUID) (*models.Ticket, error)
+	
+	// Ticket Type methods
+	CreateTicketType(ticketType *models.TicketType) error
+	GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error)
+	GetTicketTypeByID(id uuid.UUID) (*models.TicketType, error)
 }

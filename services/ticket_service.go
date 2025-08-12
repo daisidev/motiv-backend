@@ -11,6 +11,10 @@ type TicketService interface {
 	PurchaseTicket(ticket *models.Ticket) error
 	GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error)
 	GetTicketByID(id uuid.UUID) (*models.Ticket, error)
+	
+	// Ticket Type methods
+	CreateTicketType(ticketType *models.TicketType) error
+	GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error)
 }
 
 type ticketService struct {
@@ -32,4 +36,13 @@ func (s *ticketService) GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, 
 
 func (s *ticketService) GetTicketByID(id uuid.UUID) (*models.Ticket, error) {
 	return s.ticketRepo.GetTicketByID(id)
+}
+
+// Ticket Type methods
+func (s *ticketService) CreateTicketType(ticketType *models.TicketType) error {
+	return s.ticketRepo.CreateTicketType(ticketType)
+}
+
+func (s *ticketService) GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error) {
+	return s.ticketRepo.GetTicketTypesByEventID(eventID)
 }

@@ -51,7 +51,7 @@ func main() {
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	authHandler := handlers.NewAuthHandler(userService, jwtSecret)
 	userHandler := handlers.NewUserHandler(userService, wishlistService, ticketService)
-	eventHandler := handlers.NewEventHandler(eventService)
+	eventHandler := handlers.NewEventHandler(eventService, ticketService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 	reviewHandler := handlers.NewReviewHandler(reviewService)
 	paymentHandler := handlers.NewPaymentHandler(paymentService)

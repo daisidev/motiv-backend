@@ -15,11 +15,12 @@ import (
 
 // EventHandler handles event-related requests
 type EventHandler struct {
-	eventService services.EventService
+	eventService  services.EventService
+	ticketService services.TicketService
 }
 
-func NewEventHandler(eventService services.EventService) *EventHandler {
-	return &EventHandler{eventService}
+func NewEventHandler(eventService services.EventService, ticketService services.TicketService) *EventHandler {
+	return &EventHandler{eventService, ticketService}
 }
 
 // GetAllEvents handles retrieving all events with pagination
@@ -160,11 +161,21 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create event"})
 	}
 
-	// For now, we'll return the created event
-	// TODO: Add ticket type creation logic when ticket service is integrated
-	createdEvent := &newEvent
+	// Create ticket types for ticketed events
+	if req.EventType == "ticketed" {
+		for i := range ticketTypes {
+			ticketTypes[i].EventID = newEvent.ID
+			err = h.ticketService.CreateTicketType(&ticketTypes[i])
+			if err != nil {
+				log.Printf("Error creating ticket type: %v", err)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create ticket types"})
+			}
+		}
+		// Attach ticket types to the event for response
+		newEvent.TicketTypes = ticketTypes
+	}
 
-	return c.Status(fiber.StatusCreated).JSON(createdEvent)
+	return c.Status(fiber.StatusCreated).JSON(newEvent)
 }
 
 // UpdateEvent handles updating an event

@@ -36,3 +36,26 @@ func (r *ticketRepoPG) GetTicketByID(id uuid.UUID) (*models.Ticket, error) {
 	}
 	return &ticket, nil
 }
+
+// Ticket Type methods
+func (r *ticketRepoPG) CreateTicketType(ticketType *models.TicketType) error {
+	return r.db.Create(ticketType).Error
+}
+
+func (r *ticketRepoPG) GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error) {
+	var ticketTypes []*models.TicketType
+	err := r.db.Where("event_id = ?", eventID).Find(&ticketTypes).Error
+	if err != nil {
+		return nil, err
+	}
+	return ticketTypes, nil
+}
+
+func (r *ticketRepoPG) GetTicketTypeByID(id uuid.UUID) (*models.TicketType, error) {
+	var ticketType models.TicketType
+	err := r.db.Where("id = ?", id).First(&ticketType).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ticketType, nil
+}

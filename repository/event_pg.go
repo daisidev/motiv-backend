@@ -23,7 +23,7 @@ func (r *eventRepoPG) CreateEvent(event *models.Event) error {
 
 func (r *eventRepoPG) GetEventByID(id uuid.UUID) (*models.Event, error) {
 	var event models.Event
-	err := r.db.Preload("Host").Where("id = ?", id).First(&event).Error
+	err := r.db.Preload("Host").Preload("TicketTypes").Where("id = ?", id).First(&event).Error
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (r *eventRepoPG) GetEventByID(id uuid.UUID) (*models.Event, error) {
 
 func (r *eventRepoPG) GetEventsByHostID(hostID uuid.UUID) ([]*models.Event, error) {
 	var events []*models.Event
-	err := r.db.Preload("Host").Where("host_id = ?", hostID).Find(&events).Error
+	err := r.db.Preload("Host").Preload("TicketTypes").Where("host_id = ?", hostID).Find(&events).Error
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (r *eventRepoPG) GetEventsByHostID(hostID uuid.UUID) ([]*models.Event, erro
 
 func (r *eventRepoPG) GetAllEvents() ([]*models.Event, error) {
 	var events []*models.Event
-	err := r.db.Preload("Host").Find(&events).Error
+	err := r.db.Preload("Host").Preload("TicketTypes").Find(&events).Error
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (r *eventRepoPG) GetAllEventsWithPagination(page, limit int, search, tags, 
 
 	// Apply pagination and get results
 	offset := (page - 1) * limit
-	err := query.Preload("Host").
+	err := query.Preload("Host").Preload("TicketTypes").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
