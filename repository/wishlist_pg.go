@@ -1,4 +1,3 @@
-
 package repository
 
 import (
@@ -33,4 +32,24 @@ func (r *wishlistRepoPG) GetWishlistByUserID(userID uuid.UUID) ([]*models.Event,
 		return nil, err
 	}
 	return events, nil
+}
+
+func (r *wishlistRepoPG) GetWishlistItemsByUserID(userID uuid.UUID) ([]*models.Wishlist, error) {
+	var wishlistItems []*models.Wishlist
+	err := r.db.Where("user_id = ?", userID).
+		Preload("Event").
+		Preload("User").
+		Find(&wishlistItems).Error
+	if err != nil {
+		return nil, err
+	}
+	return wishlistItems, nil
+}
+
+func (r *wishlistRepoPG) IsInWishlist(userID, eventID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.Wishlist{}).
+		Where("user_id = ? AND event_id = ?", userID, eventID).
+		Count(&count).Error
+	return count > 0, err
 }

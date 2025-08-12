@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -93,6 +92,7 @@ func main() {
 	user.Put("/me", userHandler.UpdateMe)
 	user.Get("/me/tickets", userHandler.GetMyTickets)
 	user.Get("/me/wishlist", userHandler.GetMyWishlist)
+	user.Get("/me/wishlist/check", userHandler.CheckWishlistStatus)
 	user.Post("/me/wishlist", userHandler.AddToMyWishlist)
 	user.Delete("/me/wishlist", userHandler.RemoveFromMyWishlist)
 
@@ -109,20 +109,20 @@ func main() {
 	host := api.Group("/hosts")
 	host.Use(middleware.AuthRequired(jwtSecret))
 	host.Use(middleware.RoleRequired(models.HostRole, models.AdminRole, models.SuperhostRole))
-	
+
 	// Host events
 	host.Get("/me/events", eventHandler.GetMyEvents)
 	host.Post("/me/events", eventHandler.CreateEvent)
 	host.Put("/me/events/:id", eventHandler.UpdateEvent)
 	host.Delete("/me/events/:id", eventHandler.DeleteEvent)
-	
+
 	// Host analytics
 	host.Get("/me/analytics/dashboard", analyticsHandler.GetHostDashboard)
 	host.Get("/me/analytics/revenue", analyticsHandler.GetMonthlyRevenue)
-	
+
 	// Host reviews
 	host.Get("/me/reviews", reviewHandler.GetHostReviews)
-	
+
 	// Host payments
 	host.Get("/me/payments/earnings", paymentHandler.GetHostEarnings)
 	host.Get("/me/payments/payouts", paymentHandler.GetHostPayouts)

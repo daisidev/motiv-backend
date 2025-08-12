@@ -1,8 +1,8 @@
-
 package handlers
 
 import (
 	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -93,12 +93,12 @@ func (h *UserHandler) GetMyWishlist(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
 	}
 
-	wishlist, err := h.wishlistService.GetWishlistByUserID(userID)
+	wishlistItems, err := h.wishlistService.GetWishlistItemsByUserID(userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get wishlist"})
 	}
 
-	return c.JSON(wishlist)
+	return c.JSON(wishlistItems)
 }
 
 // AddToMyWishlist handles adding an event to the current user's wishlist
@@ -165,4 +165,32 @@ func (h *UserHandler) RemoveFromMyWishlist(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusOK)
+}
+
+// CheckWishlistStatus handles checking if an event is in the user's wishlist
+func (h *UserHandler) CheckWishlistStatus(c *fiber.Ctx) error {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	// Get event_id from query parameter
+	eventIDStr := c.Query("event_id")
+	if eventIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "event_id query parameter is required"})
+	}
+
+	eventID, err := uuid.Parse(eventIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
+	}
+
+	isInWishlist, err := h.wishlistService.IsInWishlist(userID, eventID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to check wishlist status"})
+	}
+
+	return c.JSON(fiber.Map{"is_in_wishlist": isInWishlist})
 }
