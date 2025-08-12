@@ -4,6 +4,7 @@ package handlers
 import (
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
@@ -95,20 +96,75 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
 	}
 
-	var newEvent models.Event
-	if err := c.BodyParser(&newEvent); err != nil {
-		// Log the detailed error to the console
+	var req models.CreateEventRequest
+	if err := c.BodyParser(&req); err != nil {
 		log.Printf("Error parsing request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request: " + err.Error()})
 	}
 
-	newEvent.HostID = hostID
+	// Validate event type
+	if req.EventType != "ticketed" && req.EventType != "free" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Event type must be 'ticketed' or 'free'"})
+	}
 
-	if err := h.eventService.CreateEvent(&newEvent); err != nil {
+	// For ticketed events, validate that ticket types are provided
+	if req.EventType == "ticketed" && len(req.TicketTypes) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ticketed events must have at least one ticket type"})
+	}
+
+	// For free events, ensure no ticket types are provided
+	if req.EventType == "free" && len(req.TicketTypes) > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Free events cannot have ticket types"})
+	}
+
+	// Parse start date
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start date format. Use YYYY-MM-DD"})
+	}
+
+	// Create the event
+	newEvent := models.Event{
+		Title:          req.Title,
+		Description:    req.Description,
+		StartDate:      startDate,
+		StartTime:      req.StartTime,
+		EndTime:        req.EndTime,
+		Location:       req.Location,
+		Tags:           req.Tags,
+		BannerImageURL: req.BannerImageURL,
+		EventType:      req.EventType,
+		HostID:         hostID,
+		Status:         models.DraftEvent,
+	}
+
+	// Create ticket types for ticketed events
+	var ticketTypes []models.TicketType
+	if req.EventType == "ticketed" {
+		for _, ticketReq := range req.TicketTypes {
+			ticketType := models.TicketType{
+				Name:            ticketReq.Name,
+				Price:           ticketReq.Price,
+				Description:     ticketReq.Description,
+				TotalQuantity:   ticketReq.TotalQuantity,
+				SoldQuantity:    0,
+			}
+			ticketTypes = append(ticketTypes, ticketType)
+		}
+	}
+
+	// Create the event first
+	err = h.eventService.CreateEvent(&newEvent)
+	if err != nil {
+		log.Printf("Error creating event: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create event"})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(newEvent)
+	// For now, we'll return the created event
+	// TODO: Add ticket type creation logic when ticket service is integrated
+	createdEvent := &newEvent
+
+	return c.Status(fiber.StatusCreated).JSON(createdEvent)
 }
 
 // UpdateEvent handles updating an event

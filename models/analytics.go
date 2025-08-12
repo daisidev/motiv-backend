@@ -9,41 +9,41 @@ import (
 
 type EventView struct {
 	gorm.Model
-	ID        uuid.UUID `gorm:"type:uuid;primary_key;"`
-	EventID   uuid.UUID `gorm:"type:uuid;not null"`
-	Event     Event     `gorm:"foreignKey:EventID"`
-	UserID    *uuid.UUID `gorm:"type:uuid"` // nullable for anonymous views
-	User      *User      `gorm:"foreignKey:UserID"`
-	IPAddress string
-	UserAgent string
-	ViewedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	ID        uuid.UUID  `gorm:"type:uuid;primary_key;" json:"id"`
+	EventID   uuid.UUID  `gorm:"type:uuid;not null" json:"event_id"`
+	Event     Event      `gorm:"foreignKey:EventID" json:"event"`
+	UserID    *uuid.UUID `gorm:"type:uuid" json:"user_id"` // nullable for anonymous views
+	User      *User      `gorm:"foreignKey:UserID" json:"user"`
+	IPAddress string     `json:"ip_address"`
+	UserAgent string     `json:"user_agent"`
+	ViewedAt  time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"viewed_at"`
 }
 
 type EventAnalytics struct {
 	gorm.Model
-	ID              uuid.UUID `gorm:"type:uuid;primary_key;"`
-	EventID         uuid.UUID `gorm:"type:uuid;not null;unique"`
-	Event           Event     `gorm:"foreignKey:EventID"`
-	TotalViews      int       `gorm:"default:0"`
-	UniqueViews     int       `gorm:"default:0"`
-	TicketsSold     int       `gorm:"default:0"`
-	Revenue         float64   `gorm:"default:0"`
-	ConversionRate  float64   `gorm:"default:0"` // tickets sold / unique views
-	WishlistAdds    int       `gorm:"default:0"`
-	LastUpdated     time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	EventID        uuid.UUID `gorm:"type:uuid;not null;unique" json:"event_id"`
+	Event          Event     `gorm:"foreignKey:EventID" json:"event"`
+	TotalViews     int       `gorm:"default:0" json:"total_views"`
+	UniqueViews    int       `gorm:"default:0" json:"unique_views"`
+	TicketsSold    int       `gorm:"default:0" json:"tickets_sold"`
+	Revenue        float64   `gorm:"default:0" json:"revenue"`
+	ConversionRate float64   `gorm:"default:0" json:"conversion_rate"` // tickets sold / unique views
+	WishlistAdds   int       `gorm:"default:0" json:"wishlist_adds"`
+	LastUpdated    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"last_updated"`
 }
 
 type HostAnalytics struct {
 	gorm.Model
-	ID             uuid.UUID `gorm:"type:uuid;primary_key;"`
-	HostID         uuid.UUID `gorm:"type:uuid;not null;unique"`
-	Host           User      `gorm:"foreignKey:HostID"`
-	TotalEvents    int       `gorm:"default:0"`
-	TotalRevenue   float64   `gorm:"default:0"`
-	TotalAttendees int       `gorm:"default:0"`
-	TotalViews     int       `gorm:"default:0"`
-	AverageRating  float64   `gorm:"default:0"`
-	LastUpdated    time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	HostID         uuid.UUID `gorm:"type:uuid;not null;unique" json:"host_id"`
+	Host           User      `gorm:"foreignKey:HostID" json:"host"`
+	TotalEvents    int       `gorm:"default:0" json:"total_events"`
+	TotalRevenue   float64   `gorm:"default:0" json:"total_revenue"`
+	TotalAttendees int       `gorm:"default:0" json:"total_attendees"`
+	TotalViews     int       `gorm:"default:0" json:"total_views"`
+	AverageRating  float64   `gorm:"default:0" json:"average_rating"`
+	LastUpdated    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"last_updated"`
 }
 
 func (ev *EventView) BeforeCreate(tx *gorm.DB) (err error) {

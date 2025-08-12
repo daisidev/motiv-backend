@@ -19,18 +19,20 @@ const (
 
 type Event struct {
 	gorm.Model
-	ID             uuid.UUID      `gorm:"type:uuid;primary_key;"`
-	Title          string         `gorm:"not null"`
-	Description    string
-	StartDate      time.Time      `gorm:"not null"`
-	StartTime      string         `gorm:"not null"`
-	EndTime        string         `gorm:"not null"`
-	Location       string         `gorm:"not null"`
-	Tags           pq.StringArray `gorm:"type:text[]"`
-	BannerImageURL string
-	HostID         uuid.UUID      `gorm:"type:uuid;not null"`
-	Host           User           `gorm:"foreignKey:HostID"`
-	Status         EventStatus    `gorm:"type:varchar(20);not null;default:'draft'"`
+	ID             uuid.UUID      `gorm:"type:uuid;primary_key;" json:"id"`
+	Title          string         `gorm:"not null" json:"title"`
+	Description    string         `json:"description"`
+	StartDate      time.Time      `gorm:"not null" json:"start_date"`
+	StartTime      string         `gorm:"not null" json:"start_time"`
+	EndTime        string         `gorm:"not null" json:"end_time"`
+	Location       string         `gorm:"not null" json:"location"`
+	Tags           pq.StringArray `gorm:"type:text[]" json:"tags"`
+	BannerImageURL string         `json:"banner_image_url"`
+	EventType      string         `gorm:"type:varchar(20);not null;default:'ticketed'" json:"event_type"` // "ticketed" or "free"
+	HostID         uuid.UUID      `gorm:"type:uuid;not null" json:"host_id"`
+	Host           User           `gorm:"foreignKey:HostID" json:"host"`
+	TicketTypes    []TicketType   `gorm:"foreignKey:EventID" json:"ticket_types,omitempty"`
+	Status         EventStatus    `gorm:"type:varchar(20);not null;default:'draft'" json:"status"`
 }
 
 func (e *Event) BeforeCreate(tx *gorm.DB) (err error) {

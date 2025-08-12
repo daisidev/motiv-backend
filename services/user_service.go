@@ -11,6 +11,8 @@ import (
 type UserService interface {
 	CreateUser(user *models.User) error
 	LoginUser(email, password string) (*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
+	GetUserByUsername(username string) (*models.User, error)
 	GetUserByID(id uuid.UUID) (*models.User, error)
 	UpdateUser(user *models.User) error
 }
@@ -44,6 +46,14 @@ func (s *userService) LoginUser(email, password string) (*models.User, error) {
 	}
 
 	return user, nil
+}
+
+func (s *userService) GetUserByEmail(email string) (*models.User, error) {
+	return s.userRepo.GetUserByEmail(email)
+}
+
+func (s *userService) GetUserByUsername(username string) (*models.User, error) {
+	return s.userRepo.GetUserByUsername(username)
 }
 
 func (s *userService) GetUserByID(id uuid.UUID) (*models.User, error) {

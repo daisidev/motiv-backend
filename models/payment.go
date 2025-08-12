@@ -26,32 +26,32 @@ const (
 
 type Payment struct {
 	gorm.Model
-	ID            uuid.UUID     `gorm:"type:uuid;primary_key;"`
-	TicketID      uuid.UUID     `gorm:"type:uuid;not null"`
-	Ticket        Ticket        `gorm:"foreignKey:TicketID"`
-	Amount        float64       `gorm:"not null"`
-	Currency      string        `gorm:"default:'NGN'"`
-	Status        PaymentStatus `gorm:"type:payment_status;not null"`
-	Method        PaymentMethod `gorm:"type:payment_method;not null"`
-	Reference     string        `gorm:"unique;not null"`
-	ProcessedAt   *time.Time
-	FailureReason string
+	ID            uuid.UUID     `gorm:"type:uuid;primary_key;" json:"id"`
+	TicketID      uuid.UUID     `gorm:"type:uuid;not null" json:"ticket_id"`
+	Ticket        Ticket        `gorm:"foreignKey:TicketID" json:"ticket"`
+	Amount        float64       `gorm:"not null" json:"amount"`
+	Currency      string        `gorm:"default:'NGN'" json:"currency"`
+	Status        PaymentStatus `gorm:"type:payment_status;not null" json:"status"`
+	Method        PaymentMethod `gorm:"type:payment_method;not null" json:"method"`
+	Reference     string        `gorm:"unique;not null" json:"reference"`
+	ProcessedAt   *time.Time    `json:"processed_at"`
+	FailureReason string        `json:"failure_reason"`
 }
 
 type Payout struct {
 	gorm.Model
-	ID          uuid.UUID     `gorm:"type:uuid;primary_key;"`
-	HostID      uuid.UUID     `gorm:"type:uuid;not null"`
-	Host        User          `gorm:"foreignKey:HostID"`
-	EventID     uuid.UUID     `gorm:"type:uuid;not null"`
-	Event       Event         `gorm:"foreignKey:EventID"`
-	Amount      float64       `gorm:"not null"`
-	Currency    string        `gorm:"default:'NGN'"`
-	Status      PaymentStatus `gorm:"type:payment_status;not null"`
-	Method      PaymentMethod `gorm:"type:payment_method;not null"`
-	Reference   string        `gorm:"unique;not null"`
-	ProcessedAt *time.Time
-	PayoutDate  time.Time `gorm:"not null"`
+	ID          uuid.UUID     `gorm:"type:uuid;primary_key;" json:"id"`
+	HostID      uuid.UUID     `gorm:"type:uuid;not null" json:"host_id"`
+	Host        User          `gorm:"foreignKey:HostID" json:"host"`
+	EventID     uuid.UUID     `gorm:"type:uuid;not null" json:"event_id"`
+	Event       Event         `gorm:"foreignKey:EventID" json:"event"`
+	Amount      float64       `gorm:"not null" json:"amount"`
+	Currency    string        `gorm:"default:'NGN'" json:"currency"`
+	Status      PaymentStatus `gorm:"type:payment_status;not null" json:"status"`
+	Method      PaymentMethod `gorm:"type:payment_method;not null" json:"method"`
+	Reference   string        `gorm:"unique;not null" json:"reference"`
+	ProcessedAt *time.Time    `json:"processed_at"`
+	PayoutDate  time.Time     `gorm:"not null" json:"payout_date"`
 }
 
 func (p *Payment) BeforeCreate(tx *gorm.DB) (err error) {

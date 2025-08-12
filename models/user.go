@@ -17,12 +17,13 @@ const (
 
 type User struct {
 	gorm.Model
-	ID       uuid.UUID `gorm:"type:uuid;primary_key;"`
-	Name     string    `gorm:"not null"`
-	Email    string    `gorm:"unique;not null"`
-	Password string    `gorm:"not null"`
-	Avatar   string
-	Role     UserRole `gorm:"type:varchar(20);not null;default:'guest'"`
+	ID       uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	Name     string    `gorm:"not null" json:"name"`
+	Username string    `gorm:"unique;not null" json:"username"`
+	Email    string    `gorm:"unique;not null" json:"email"`
+	Password string    `gorm:"not null" json:"-"` // Never serialize password
+	Avatar   string    `json:"avatar"`
+	Role     UserRole  `gorm:"type:varchar(20);not null;default:'guest'" json:"role"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {

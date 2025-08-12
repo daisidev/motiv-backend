@@ -28,6 +28,15 @@ func (r *userRepoPG) GetUserByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
+func (r *userRepoPG) GetUserByUsername(username string) (*models.User, error) {
+	var user models.User
+	err := r.db.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *userRepoPG) GetUserByID(id uuid.UUID) (*models.User, error) {
 	var user models.User
 	err := r.db.Where("id = ?", id).First(&user).Error
