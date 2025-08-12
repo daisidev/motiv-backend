@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/hidenkeys/motiv-backend/services"
 	"github.com/google/uuid"
@@ -27,7 +28,12 @@ type CreateReviewRequest struct {
 
 // POST /api/v1/reviews
 func (h *ReviewHandler) CreateReview(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
 	
 	var req CreateReviewRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -93,7 +99,12 @@ func (h *ReviewHandler) GetEventReviews(c *fiber.Ctx) error {
 
 // GET /api/v1/hosts/me/reviews
 func (h *ReviewHandler) GetHostReviews(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
 	
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
