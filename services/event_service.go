@@ -1,4 +1,3 @@
-
 package services
 
 import (
@@ -9,11 +8,14 @@ import (
 
 // EventQueryParams represents parameters for querying events
 type EventQueryParams struct {
-	Page     int
-	Limit    int
-	Search   string
-	Tags     string
-	Location string
+	Page      int
+	Limit     int
+	Search    string
+	Tags      string
+	Location  string
+	EventType string
+	DateFrom  string
+	DateTo    string
 }
 
 // PaginatedEventResponse represents a paginated response for events
@@ -60,7 +62,7 @@ func (s *eventService) GetAllEvents() ([]*models.Event, error) {
 }
 
 func (s *eventService) GetAllEventsWithPagination(params EventQueryParams) (*PaginatedEventResponse, error) {
-	events, total, err := s.eventRepo.GetAllEventsWithPagination(params.Page, params.Limit, params.Search, params.Tags, params.Location)
+	events, total, err := s.eventRepo.GetAllEventsWithPagination(params.Page, params.Limit, params.Search, params.Tags, params.Location, params.EventType, params.DateFrom, params.DateTo)
 	if err != nil {
 		return nil, err
 	}

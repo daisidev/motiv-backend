@@ -1,4 +1,3 @@
-
 package handlers
 
 import (
@@ -31,6 +30,9 @@ func (h *EventHandler) GetAllEvents(c *fiber.Ctx) error {
 	search := c.Query("search", "")
 	tags := c.Query("tags", "")
 	location := c.Query("location", "")
+	eventType := c.Query("event_type", "") // "free" or "ticketed"
+	dateFrom := c.Query("date_from", "")
+	dateTo := c.Query("date_to", "")
 
 	// Validate pagination parameters
 	if page < 1 {
@@ -41,11 +43,14 @@ func (h *EventHandler) GetAllEvents(c *fiber.Ctx) error {
 	}
 
 	params := services.EventQueryParams{
-		Page:     page,
-		Limit:    limit,
-		Search:   search,
-		Tags:     tags,
-		Location: location,
+		Page:      page,
+		Limit:     limit,
+		Search:    search,
+		Tags:      tags,
+		Location:  location,
+		EventType: eventType,
+		DateFrom:  dateFrom,
+		DateTo:    dateTo,
 	}
 
 	result, err := h.eventService.GetAllEventsWithPagination(params)
@@ -144,11 +149,11 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 	if req.EventType == "ticketed" {
 		for _, ticketReq := range req.TicketTypes {
 			ticketType := models.TicketType{
-				Name:            ticketReq.Name,
-				Price:           ticketReq.Price,
-				Description:     ticketReq.Description,
-				TotalQuantity:   ticketReq.TotalQuantity,
-				SoldQuantity:    0,
+				Name:          ticketReq.Name,
+				Price:         ticketReq.Price,
+				Description:   ticketReq.Description,
+				TotalQuantity: ticketReq.TotalQuantity,
+				SoldQuantity:  0,
 			}
 			ticketTypes = append(ticketTypes, ticketType)
 		}

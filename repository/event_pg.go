@@ -1,4 +1,3 @@
-
 package repository
 
 import (
@@ -48,7 +47,7 @@ func (r *eventRepoPG) GetAllEvents() ([]*models.Event, error) {
 	return events, nil
 }
 
-func (r *eventRepoPG) GetAllEventsWithPagination(page, limit int, search, tags, location string) ([]*models.Event, int, error) {
+func (r *eventRepoPG) GetAllEventsWithPagination(page, limit int, search, tags, location, eventType, dateFrom, dateTo string) ([]*models.Event, int, error) {
 	var events []*models.Event
 	var total int64
 
@@ -65,13 +64,25 @@ func (r *eventRepoPG) GetAllEventsWithPagination(page, limit int, search, tags, 
 		for _, tag := range tagList {
 			tag = strings.TrimSpace(tag)
 			if tag != "" {
-				query = query.Where("tags ILIKE ?", "%"+tag+"%")
+				query = query.Where("tags && ARRAY[?]", tag)
 			}
 		}
 	}
 
 	if location != "" {
 		query = query.Where("location ILIKE ?", "%"+location+"%")
+	}
+
+	if eventType != "" {
+		query = query.Where("event_type = ?", eventType)
+	}
+
+	if dateFrom != "" {
+		query = query.Where("start_date >= ?", dateFrom)
+	}
+
+	if dateTo != "" {
+		query = query.Where("start_date <= ?", dateTo)
 	}
 
 	// Get total count

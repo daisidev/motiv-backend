@@ -49,7 +49,7 @@ func (h *ReviewHandler) CreateReview(c *fiber.Ctx) error {
 		Comment: req.Comment,
 	}
 	
-	err := h.reviewService.CreateReview(review)
+	err = h.reviewService.CreateReview(review)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"error": err.Error(),

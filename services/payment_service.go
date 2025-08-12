@@ -71,10 +71,11 @@ func (s *paymentService) UpdatePaymentStatus(reference string, status models.Pay
 	}
 	
 	payment.Status = status
-	if status == models.PaymentCompleted {
+	switch status {
+case models.PaymentCompleted:
 		now := time.Now()
 		payment.ProcessedAt = &now
-	} else if status == models.PaymentFailed {
+	case models.PaymentFailed:
 		payment.FailureReason = failureReason
 	}
 	
