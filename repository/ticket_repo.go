@@ -15,4 +15,5 @@ type TicketRepository interface {
 	CreateTicketType(ticketType *models.TicketType) error
 	GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error)
 	GetTicketTypeByID(id uuid.UUID) (*models.TicketType, error)
+	UpdateSoldQuantity(ticketTypeID uuid.UUID, quantity int) error
 }

@@ -43,7 +43,7 @@ func main() {
 	ticketService := services.NewTicketService(ticketRepo)
 	wishlistService := services.NewWishlistService(wishlistRepo)
 	reviewService := services.NewReviewService(reviewRepo)
-	paymentService := services.NewPaymentService(paymentRepo)
+	paymentService := services.NewPaymentService(paymentRepo, userRepo)
 	analyticsService := services.NewAnalyticsService(analyticsRepo, paymentRepo, attendeeRepo, reviewRepo)
 
 	// Create handlers
@@ -53,7 +53,7 @@ func main() {
 	eventHandler := handlers.NewEventHandler(eventService, ticketService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 	reviewHandler := handlers.NewReviewHandler(reviewService)
-	paymentHandler := handlers.NewPaymentHandler(paymentService)
+	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 	// Create Fiber app
@@ -137,13 +137,15 @@ func main() {
 	review.Delete("/:id", reviewHandler.DeleteReview)
 	review.Post("/:id/helpful", reviewHandler.MarkReviewHelpful)
 
+	// Payment routes
+	payment := api.Group("/payments")
+	payment.Post("/initiate", middleware.AuthRequired(jwtSecret), paymentHandler.InitiatePayment)
+	payment.Post("/webhook", paymentHandler.PaymentWebhook) // No auth required for webhook
+
 	// Ticket routes
 	ticket := api.Group("/tickets")
 	ticket.Use(middleware.AuthRequired(jwtSecret))
 	ticket.Post("/purchase", ticketHandler.PurchaseTicket)
-
-	// Payment webhook (no auth required)
-	api.Post("/payments/webhook", paymentHandler.PaymentWebhook)
 
 	// Start server
 	log.Fatal(app.Listen(":8080"))

@@ -59,3 +59,9 @@ func (r *ticketRepoPG) GetTicketTypeByID(id uuid.UUID) (*models.TicketType, erro
 	}
 	return &ticketType, nil
 }
+
+func (r *ticketRepoPG) UpdateSoldQuantity(ticketTypeID uuid.UUID, quantity int) error {
+	return r.db.Model(&models.TicketType{}).
+		Where("id = ?", ticketTypeID).
+		Update("sold_quantity", gorm.Expr("sold_quantity + ?", quantity)).Error
+}

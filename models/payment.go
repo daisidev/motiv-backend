@@ -24,6 +24,60 @@ const (
 	Wallet       PaymentMethod = "wallet"
 )
 
+// PaystackWebhookEvent represents the webhook payload from Paystack
+type PaystackWebhookEvent struct {
+	Event string `json:"event"`
+	Data  struct {
+		ID                int64     `json:"id"`
+		Domain            string    `json:"domain"`
+		Status            string    `json:"status"`
+		Reference         string    `json:"reference"`
+		Amount            int64     `json:"amount"` // Amount in kobo
+		Message           string    `json:"message"`
+		GatewayResponse   string    `json:"gateway_response"`
+		PaidAt            time.Time `json:"paid_at"`
+		CreatedAt         time.Time `json:"created_at"`
+		Channel           string    `json:"channel"`
+		Currency          string    `json:"currency"`
+		IPAddress         string    `json:"ip_address"`
+		Metadata          struct {
+			EventID      string `json:"eventId"`
+			EventTitle   string `json:"eventTitle"`
+			AttendeeData struct {
+				FullName string `json:"fullName"`
+				Email    string `json:"email"`
+				Phone    string `json:"phone"`
+			} `json:"attendeeData"`
+			TicketDetails []struct {
+				TicketTypeID   string  `json:"ticketTypeId"`
+				TicketTypeName string  `json:"ticketTypeName"`
+				Quantity       int     `json:"quantity"`
+				Price          float64 `json:"price"`
+			} `json:"ticketDetails"`
+		} `json:"metadata"`
+		Customer struct {
+			ID           int64  `json:"id"`
+			FirstName    string `json:"first_name"`
+			LastName     string `json:"last_name"`
+			Email        string `json:"email"`
+			CustomerCode string `json:"customer_code"`
+			Phone        string `json:"phone"`
+		} `json:"customer"`
+		Authorization struct {
+			AuthorizationCode string `json:"authorization_code"`
+			Bin               string `json:"bin"`
+			Last4             string `json:"last4"`
+			ExpMonth          string `json:"exp_month"`
+			ExpYear           string `json:"exp_year"`
+			Channel           string `json:"channel"`
+			CardType          string `json:"card_type"`
+			Bank              string `json:"bank"`
+			CountryCode       string `json:"country_code"`
+			Brand             string `json:"brand"`
+		} `json:"authorization"`
+	} `json:"data"`
+}
+
 type Payment struct {
 	gorm.Model
 	ID            uuid.UUID     `gorm:"type:uuid;primary_key;" json:"id"`

@@ -11,9 +11,11 @@ import (
 
 type PaymentService interface {
 	// Payment processing
+	CreatePayment(payment *models.Payment) error
 	ProcessPayment(ticketID uuid.UUID, amount float64, method models.PaymentMethod) (*models.Payment, error)
 	UpdatePaymentStatus(reference string, status models.PaymentStatus, failureReason string) error
 	GetPaymentByReference(reference string) (*models.Payment, error)
+	GetUserIDByEmail(email string) (uuid.UUID, error)
 	
 	// Payouts
 	CreatePayout(hostID, eventID uuid.UUID, amount float64) (*models.Payout, error)
@@ -28,12 +30,26 @@ type PaymentService interface {
 
 type paymentService struct {
 	paymentRepo repository.PaymentRepository
+	userRepo    repository.UserRepository
 }
 
-func NewPaymentService(paymentRepo repository.PaymentRepository) PaymentService {
+func NewPaymentService(paymentRepo repository.PaymentRepository, userRepo repository.UserRepository) PaymentService {
 	return &paymentService{
 		paymentRepo: paymentRepo,
+		userRepo:    userRepo,
 	}
+}
+
+func (s *paymentService) CreatePayment(payment *models.Payment) error {
+	return s.paymentRepo.CreatePayment(payment)
+}
+
+func (s *paymentService) GetUserIDByEmail(email string) (uuid.UUID, error) {
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return user.ID, nil
 }
 
 func (s *paymentService) ProcessPayment(ticketID uuid.UUID, amount float64, method models.PaymentMethod) (*models.Payment, error) {

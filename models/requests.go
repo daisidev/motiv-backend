@@ -94,3 +94,48 @@ type UserResponse struct {
 	Avatar   string    `json:"avatar"`
 	Role     string    `json:"role"`
 }
+
+// PaymentInitiationRequest represents the request to initiate payment
+type PaymentInitiationRequest struct {
+	EventID       string `json:"eventId" validate:"required"`
+	Email         string `json:"email" validate:"required,email"`
+	AttendeeData  AttendeeDataRequest `json:"attendeeData" validate:"required"`
+	TicketDetails []TicketDetailRequest `json:"ticketDetails" validate:"required,min=1"`
+}
+
+// AttendeeDataRequest represents attendee information
+type AttendeeDataRequest struct {
+	FullName string `json:"fullName" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Phone    string `json:"phone" validate:"required"`
+}
+
+// TicketDetailRequest represents ticket purchase details
+type TicketDetailRequest struct {
+	TicketTypeID   string  `json:"ticketTypeId" validate:"required"`
+	TicketTypeName string  `json:"ticketTypeName" validate:"required"`
+	Quantity       int     `json:"quantity" validate:"required,min=1"`
+	Price          float64 `json:"price" validate:"required,min=0"`
+}
+
+// PaymentInitiationResponse represents the response for payment initiation
+type PaymentInitiationResponse struct {
+	Reference       string  `json:"reference"`
+	Amount          int64   `json:"amount"` // Amount in kobo
+	PaystackURL     string  `json:"paystackUrl"`
+	PublicKey       string  `json:"publicKey"`
+	Email           string  `json:"email"`
+	Currency        string  `json:"currency"`
+}
+
+// TicketResponse represents a purchased ticket
+type TicketResponse struct {
+	ID           uuid.UUID `json:"id"`
+	EventID      uuid.UUID `json:"eventId"`
+	Event        EventResponse `json:"event"`
+	TicketTypeID uuid.UUID `json:"ticketTypeId"`
+	TicketType   TicketTypeResponse `json:"ticketType"`
+	QRCode       string    `json:"qrCode"`
+	AttendeeData AttendeeDataRequest `json:"attendeeData"`
+	PurchasedAt  time.Time `json:"purchasedAt"`
+}

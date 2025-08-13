@@ -16,6 +16,12 @@ type Ticket struct {
 	TicketTypeID uuid.UUID  `gorm:"type:uuid;not null" json:"ticket_type_id"`
 	TicketType   TicketType `gorm:"foreignKey:TicketTypeID" json:"ticket_type"`
 	QRCode       string     `json:"qr_code"`
+	PaymentReference string `gorm:"not null" json:"payment_reference"`
+	// Attendee information
+	AttendeeFullName string `gorm:"not null" json:"attendee_full_name"`
+	AttendeeEmail    string `gorm:"not null" json:"attendee_email"`
+	AttendeePhone    string `gorm:"not null" json:"attendee_phone"`
+	Quantity         int    `gorm:"not null;default:1" json:"quantity"`
 }
 
 type TicketType struct {
