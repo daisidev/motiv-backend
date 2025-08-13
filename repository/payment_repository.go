@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/google/uuid"
+	"github.com/hidenkeys/motiv-backend/models"
 	"gorm.io/gorm"
 )
 
@@ -14,14 +14,14 @@ type PaymentRepository interface {
 	UpdatePayment(payment *models.Payment) error
 	GetPaymentsByTicketID(ticketID uuid.UUID) ([]models.Payment, error)
 	GetPaymentsByEventID(eventID uuid.UUID) ([]models.Payment, error)
-	
+
 	// Payouts
 	CreatePayout(payout *models.Payout) error
 	GetPayoutByID(id uuid.UUID) (*models.Payout, error)
 	GetPayoutsByHostID(hostID uuid.UUID, limit, offset int) ([]models.Payout, error)
 	UpdatePayout(payout *models.Payout) error
 	GetPendingPayouts(hostID uuid.UUID) ([]models.Payout, error)
-	
+
 	// Financial Stats
 	GetHostEarnings(hostID uuid.UUID) (float64, error)
 	GetHostMonthlyEarnings(hostID uuid.UUID, year, month int) (float64, error)
@@ -54,7 +54,8 @@ func (p *paymentRepoPG) GetPaymentByReference(reference string) (*models.Payment
 }
 
 func (p *paymentRepoPG) UpdatePayment(payment *models.Payment) error {
-	return p.db.Save(payment).Error
+	// Only update specific fields to avoid foreign key constraint issues
+	return p.db.Model(payment).Select("status", "processed_at", "failure_reason", "updated_at").Updates(payment).Error
 }
 
 func (p *paymentRepoPG) GetPaymentsByTicketID(ticketID uuid.UUID) ([]models.Payment, error) {
@@ -65,11 +66,11 @@ func (p *paymentRepoPG) GetPaymentsByTicketID(ticketID uuid.UUID) ([]models.Paym
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(tickets) == 0 {
 		return []models.Payment{}, nil
 	}
-	
+
 	var payments []models.Payment
 	err = p.db.Where("reference = ?", tickets[0].PaymentReference).Find(&payments).Error
 	return payments, err
@@ -128,7 +129,7 @@ func (p *paymentRepoPG) GetHostMonthlyEarnings(hostID uuid.UUID, year, month int
 	var monthlyEarnings float64
 	err := p.db.Model(&models.Payment{}).
 		Joins("JOIN events ON payments.event_id = events.id").
-		Where("events.host_id = ? AND payments.status = ? AND EXTRACT(YEAR FROM payments.created_at) = ? AND EXTRACT(MONTH FROM payments.created_at) = ?", 
+		Where("events.host_id = ? AND payments.status = ? AND EXTRACT(YEAR FROM payments.created_at) = ? AND EXTRACT(MONTH FROM payments.created_at) = ?",
 			hostID, models.PaymentCompleted, year, month).
 		Select("COALESCE(SUM(payments.amount), 0)").
 		Scan(&monthlyEarnings).Error
