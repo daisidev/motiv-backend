@@ -22,13 +22,15 @@ type PaymentHandler struct {
 	paymentService services.PaymentService
 	ticketService  services.TicketService
 	eventService   services.EventService
+	userService    services.UserService
 }
 
-func NewPaymentHandler(paymentService services.PaymentService, ticketService services.TicketService, eventService services.EventService) *PaymentHandler {
+func NewPaymentHandler(paymentService services.PaymentService, ticketService services.TicketService, eventService services.EventService, userService services.UserService) *PaymentHandler {
 	return &PaymentHandler{
 		paymentService: paymentService,
 		ticketService:  ticketService,
 		eventService:   eventService,
+		userService:    userService,
 	}
 }
 
@@ -120,6 +122,13 @@ func (h *PaymentHandler) InitiatePayment(c *fiber.Ctx) error {
 	userID, err := uuid.Parse(claims["user_id"].(string))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	// Validate that the user exists
+	_, err = h.userService.GetUserByID(userID)
+	if err != nil {
+		log.Printf("User with ID %s not found: %v", userID, err)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User not found"})
 	}
 
 	var req models.PaymentInitiationRequest
@@ -311,6 +320,13 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 	userID, err := uuid.Parse(claims["user_id"].(string))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	// Validate that the user exists
+	_, err = h.userService.GetUserByID(userID)
+	if err != nil {
+		log.Printf("User with ID %s not found: %v", userID, err)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User not found"})
 	}
 
 	var req struct {

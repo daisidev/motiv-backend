@@ -76,6 +76,12 @@ func (h *UserHandler) GetMyTickets(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
 	}
 
+	// Validate that the user exists
+	_, err = h.userService.GetUserByID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User not found"})
+	}
+
 	tickets, err := h.ticketService.GetTicketsByUserID(userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get tickets"})

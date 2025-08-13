@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/hidenkeys/motiv-backend/config"
 	"github.com/joho/godotenv"
@@ -10,7 +9,7 @@ import (
 
 func main() {
 	// Load .env file
-	err := godotenv.Load()
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		log.Println("Error loading .env file, using environment variables")
 	}

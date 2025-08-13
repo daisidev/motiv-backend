@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"google.golang.org/api/oauth2/v2"
-	"google.golang.org/api/option"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	oauth2v2 "google.golang.org/api/oauth2/v2"
+	"google.golang.org/api/option"
 )
 
 type GoogleAuthService struct {
@@ -52,7 +52,7 @@ func NewGoogleAuthService() *GoogleAuthService {
 func (g *GoogleAuthService) VerifyIDToken(idToken string) (*GoogleUserInfo, error) {
 	// Create OAuth2 service
 	ctx := context.Background()
-	oauth2Service, err := oauth2.NewService(ctx, option.WithAPIKey(""))
+	oauth2Service, err := oauth2v2.NewService(ctx, option.WithAPIKey(""))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OAuth2 service: %v", err)
 	}
@@ -97,13 +97,13 @@ func (g *GoogleAuthService) VerifyIDToken(idToken string) (*GoogleUserInfo, erro
 // getUserInfo gets detailed user information using the access token
 func (g *GoogleAuthService) getUserInfo(accessToken string) (*GoogleUserInfo, error) {
 	ctx := context.Background()
-	
+
 	// Create a token source
 	token := &oauth2.Token{AccessToken: accessToken}
 	tokenSource := g.config.TokenSource(ctx, token)
-	
+
 	// Create OAuth2 service with the token
-	oauth2Service, err := oauth2.NewService(ctx, option.WithTokenSource(tokenSource))
+	oauth2Service, err := oauth2v2.NewService(ctx, option.WithTokenSource(tokenSource))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OAuth2 service: %v", err)
 	}
@@ -117,7 +117,7 @@ func (g *GoogleAuthService) getUserInfo(accessToken string) (*GoogleUserInfo, er
 	return &GoogleUserInfo{
 		ID:            userInfo.Id,
 		Email:         userInfo.Email,
-		VerifiedEmail: userInfo.VerifiedEmail,
+		VerifiedEmail: userInfo.VerifiedEmail != nil && *userInfo.VerifiedEmail,
 		Name:          userInfo.Name,
 		GivenName:     userInfo.GivenName,
 		FamilyName:    userInfo.FamilyName,
@@ -135,7 +135,7 @@ func (g *GoogleAuthService) ParseJWT(tokenString string) (map[string]interface{}
 
 	// Decode the payload (second part)
 	payload := parts[1]
-	
+
 	// Add padding if necessary
 	for len(payload)%4 != 0 {
 		payload += "="
@@ -161,12 +161,12 @@ func base64URLDecode(s string) ([]byte, error) {
 	// Replace URL-safe characters
 	s = strings.ReplaceAll(s, "-", "+")
 	s = strings.ReplaceAll(s, "_", "/")
-	
+
 	// Add padding
 	for len(s)%4 != 0 {
 		s += "="
 	}
-	
+
 	return base64.StdEncoding.DecodeString(s)
 }
 
@@ -174,7 +174,7 @@ func base64URLDecode(s string) ([]byte, error) {
 func (g *GoogleAuthService) GenerateUsername(name, email string) string {
 	// Start with the name, remove spaces and convert to lowercase
 	username := strings.ToLower(strings.ReplaceAll(name, " ", ""))
-	
+
 	// If name is empty or too short, use email prefix
 	if len(username) < 3 {
 		emailParts := strings.Split(email, "@")
@@ -182,7 +182,7 @@ func (g *GoogleAuthService) GenerateUsername(name, email string) string {
 			username = strings.ToLower(emailParts[0])
 		}
 	}
-	
+
 	// Remove any non-alphanumeric characters except underscores
 	var cleanUsername strings.Builder
 	for _, char := range username {
@@ -190,18 +190,18 @@ func (g *GoogleAuthService) GenerateUsername(name, email string) string {
 			cleanUsername.WriteRune(char)
 		}
 	}
-	
+
 	result := cleanUsername.String()
-	
+
 	// Ensure minimum length
 	if len(result) < 3 {
 		result = "user" + result
 	}
-	
+
 	// Ensure maximum length
 	if len(result) > 30 {
 		result = result[:30]
 	}
-	
+
 	return result
 }

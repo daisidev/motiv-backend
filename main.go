@@ -53,7 +53,7 @@ func main() {
 	eventHandler := handlers.NewEventHandler(eventService, ticketService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 	reviewHandler := handlers.NewReviewHandler(reviewService)
-	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService)
+	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService, userService)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 	// Create Fiber app

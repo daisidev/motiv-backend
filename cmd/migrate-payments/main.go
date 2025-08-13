@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/hidenkeys/motiv-backend/config"
 	"github.com/joho/godotenv"
@@ -11,7 +10,7 @@ import (
 
 func main() {
 	// Load .env file
-	err := godotenv.Load("../.env")
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		log.Println("Error loading .env file, using environment variables")
 	}
@@ -45,7 +44,7 @@ func migratePaymentTable(db *gorm.DB) error {
 	}
 
 	log.Println("Adding event_id and user_id columns...")
-	
+
 	// Add new columns
 	err = db.Exec("ALTER TABLE payments ADD COLUMN event_id UUID").Error
 	if err != nil {
