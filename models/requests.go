@@ -85,6 +85,22 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
+// GoogleAuthRequest represents the request payload for Google OAuth
+type GoogleAuthRequest struct {
+	Credential string      `json:"credential" validate:"required"`
+	User       GoogleUser  `json:"user" validate:"required"`
+}
+
+// GoogleUser represents the user data from Google OAuth
+type GoogleUser struct {
+	ID         string `json:"id" validate:"required"`
+	Email      string `json:"email" validate:"required,email"`
+	Name       string `json:"name" validate:"required"`
+	Picture    string `json:"picture,omitempty"`
+	GivenName  string `json:"given_name,omitempty"`
+	FamilyName string `json:"family_name,omitempty"`
+}
+
 // UserResponse represents the response structure for users (to avoid password exposure)
 type UserResponse struct {
 	ID       uuid.UUID `json:"id"`

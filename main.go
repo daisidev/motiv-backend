@@ -84,6 +84,7 @@ func main() {
 	auth := api.Group("/auth")
 	auth.Post("/signup", authHandler.Signup)
 	auth.Post("/login", authHandler.Login)
+	auth.Post("/google", authHandler.GoogleAuth)
 
 	// User routes
 	user := api.Group("/users")

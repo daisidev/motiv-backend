@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -15,12 +16,17 @@ import (
 // AuthHandler handles authentication-related requests
 
 type AuthHandler struct {
-	userService services.UserService
-	jwtSecret   []byte
+	userService       services.UserService
+	googleAuthService *services.GoogleAuthService
+	jwtSecret         []byte
 }
 
 func NewAuthHandler(userService services.UserService, jwtSecret []byte) *AuthHandler {
-	return &AuthHandler{userService, jwtSecret}
+	return &AuthHandler{
+		userService:       userService,
+		googleAuthService: services.NewGoogleAuthService(),
+		jwtSecret:         jwtSecret,
+	}
 }
 
 // Helper function to validate email format
@@ -216,6 +222,117 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
+		"token": t,
+		"user":  userResponse,
+	})
+}
+
+// GoogleAuth handles Google OAuth authentication
+func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
+	var googleReq models.GoogleAuthRequest
+	if err := c.BodyParser(&googleReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	// Validate required fields
+	if googleReq.Credential == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Google credential is required"})
+	}
+	if googleReq.User.Email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email is required"})
+	}
+
+	// Verify the Google token
+	googleUserInfo, err := h.googleAuthService.VerifyIDToken(googleReq.Credential)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid Google token"})
+	}
+
+	// Verify that the email matches
+	if googleUserInfo.Email != googleReq.User.Email {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Email mismatch"})
+	}
+
+	// Check if user already exists
+	existingUser, err := h.userService.GetUserByEmail(googleUserInfo.Email)
+	if err == nil && existingUser != nil {
+		// User exists, perform login
+		token := jwt.New(jwt.SigningMethodHS256)
+		claims := token.Claims.(jwt.MapClaims)
+		claims["user_id"] = existingUser.ID
+		claims["role"] = existingUser.Role
+		claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
+		t, err := token.SignedString(h.jwtSecret)
+		if err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		userResponse := models.UserResponse{
+			ID:       existingUser.ID,
+			Name:     existingUser.Name,
+			Username: existingUser.Username,
+			Email:    existingUser.Email,
+			Avatar:   existingUser.Avatar,
+			Role:     string(existingUser.Role),
+		}
+
+		return c.JSON(fiber.Map{
+			"token": t,
+			"user":  userResponse,
+		})
+	}
+
+	// User doesn't exist, create new user
+	username := h.googleAuthService.GenerateUsername(googleUserInfo.Name, googleUserInfo.Email)
+	
+	// Ensure username is unique
+	originalUsername := username
+	counter := 1
+	for {
+		if existingUser, _ := h.userService.GetUserByUsername(username); existingUser == nil {
+			break
+		}
+		username = fmt.Sprintf("%s%d", originalUsername, counter)
+		counter++
+	}
+
+	// Create new user
+	newUser := models.User{
+		Name:     googleUserInfo.Name,
+		Username: username,
+		Email:    strings.ToLower(strings.TrimSpace(googleUserInfo.Email)),
+		Password: "", // No password for Google OAuth users
+		Avatar:   googleUserInfo.Picture,
+		Role:     models.GuestRole, // Default role
+	}
+
+	if err := h.userService.CreateUser(&newUser); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create user"})
+	}
+
+	// Create token for the new user
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+	claims["user_id"] = newUser.ID
+	claims["role"] = newUser.Role
+	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
+	t, err := token.SignedString(h.jwtSecret)
+	if err != nil {
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	userResponse := models.UserResponse{
+		ID:       newUser.ID,
+		Name:     newUser.Name,
+		Username: newUser.Username,
+		Email:    newUser.Email,
+		Avatar:   newUser.Avatar,
+		Role:     string(newUser.Role),
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"token": t,
 		"user":  userResponse,
 	})
