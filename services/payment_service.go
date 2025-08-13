@@ -12,7 +12,7 @@ import (
 type PaymentService interface {
 	// Payment processing
 	CreatePayment(payment *models.Payment) error
-	ProcessPayment(ticketID uuid.UUID, amount float64, method models.PaymentMethod) (*models.Payment, error)
+	ProcessPayment(eventID, userID uuid.UUID, amount float64, method models.PaymentMethod) (*models.Payment, error)
 	UpdatePaymentStatus(reference string, status models.PaymentStatus, failureReason string) error
 	GetPaymentByReference(reference string) (*models.Payment, error)
 	GetUserIDByEmail(email string) (uuid.UUID, error)
@@ -52,12 +52,13 @@ func (s *paymentService) GetUserIDByEmail(email string) (uuid.UUID, error) {
 	return user.ID, nil
 }
 
-func (s *paymentService) ProcessPayment(ticketID uuid.UUID, amount float64, method models.PaymentMethod) (*models.Payment, error) {
+func (s *paymentService) ProcessPayment(eventID, userID uuid.UUID, amount float64, method models.PaymentMethod) (*models.Payment, error) {
 	// Generate unique reference
-	reference := fmt.Sprintf("PAY-%s-%d", ticketID.String()[:8], time.Now().Unix())
+	reference := fmt.Sprintf("PAY-%s-%s-%d", eventID.String()[:8], userID.String()[:8], time.Now().Unix())
 	
 	payment := &models.Payment{
-		TicketID:  ticketID,
+		EventID:   eventID,
+		UserID:    userID,
 		Amount:    amount,
 		Currency:  "NGN",
 		Status:    models.PaymentPending,

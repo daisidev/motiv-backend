@@ -167,6 +167,8 @@ func (h *PaymentHandler) InitiatePayment(c *fiber.Ctx) error {
 
 	// Create payment record
 	payment := &models.Payment{
+		EventID:   eventID,
+		UserID:    userID,
 		Amount:    totalAmount,
 		Currency:  "NGN",
 		Status:    models.PaymentPending,

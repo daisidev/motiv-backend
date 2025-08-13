@@ -81,8 +81,10 @@ type PaystackWebhookEvent struct {
 type Payment struct {
 	gorm.Model
 	ID            uuid.UUID     `gorm:"type:uuid;primary_key;" json:"id"`
-	TicketID      uuid.UUID     `gorm:"type:uuid;not null" json:"ticket_id"`
-	Ticket        Ticket        `gorm:"foreignKey:TicketID" json:"ticket"`
+	EventID       uuid.UUID     `gorm:"type:uuid;not null" json:"event_id"`
+	Event         Event         `gorm:"foreignKey:EventID" json:"event"`
+	UserID        uuid.UUID     `gorm:"type:uuid;not null" json:"user_id"`
+	User          User          `gorm:"foreignKey:UserID" json:"user"`
 	Amount        float64       `gorm:"not null" json:"amount"`
 	Currency      string        `gorm:"default:'NGN'" json:"currency"`
 	Status        PaymentStatus `gorm:"type:payment_status;not null" json:"status"`

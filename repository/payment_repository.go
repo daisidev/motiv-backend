@@ -13,6 +13,7 @@ type PaymentRepository interface {
 	GetPaymentByReference(reference string) (*models.Payment, error)
 	UpdatePayment(payment *models.Payment) error
 	GetPaymentsByTicketID(ticketID uuid.UUID) ([]models.Payment, error)
+	GetPaymentsByEventID(eventID uuid.UUID) ([]models.Payment, error)
 	
 	// Payouts
 	CreatePayout(payout *models.Payout) error
@@ -42,13 +43,13 @@ func (p *paymentRepoPG) CreatePayment(payment *models.Payment) error {
 
 func (p *paymentRepoPG) GetPaymentByID(id uuid.UUID) (*models.Payment, error) {
 	var payment models.Payment
-	err := p.db.Preload("Ticket").First(&payment, "id = ?", id).Error
+	err := p.db.Preload("Event").Preload("User").First(&payment, "id = ?", id).Error
 	return &payment, err
 }
 
 func (p *paymentRepoPG) GetPaymentByReference(reference string) (*models.Payment, error) {
 	var payment models.Payment
-	err := p.db.Preload("Ticket").First(&payment, "reference = ?", reference).Error
+	err := p.db.Preload("Event").Preload("User").First(&payment, "reference = ?", reference).Error
 	return &payment, err
 }
 
@@ -57,8 +58,26 @@ func (p *paymentRepoPG) UpdatePayment(payment *models.Payment) error {
 }
 
 func (p *paymentRepoPG) GetPaymentsByTicketID(ticketID uuid.UUID) ([]models.Payment, error) {
+	// Since we changed the model, we'll get payments by finding tickets with this ID
+	// and then finding payments with those references
+	var tickets []models.Ticket
+	err := p.db.Where("id = ?", ticketID).Find(&tickets).Error
+	if err != nil {
+		return nil, err
+	}
+	
+	if len(tickets) == 0 {
+		return []models.Payment{}, nil
+	}
+	
 	var payments []models.Payment
-	err := p.db.Where("ticket_id = ?", ticketID).Find(&payments).Error
+	err = p.db.Where("reference = ?", tickets[0].PaymentReference).Find(&payments).Error
+	return payments, err
+}
+
+func (p *paymentRepoPG) GetPaymentsByEventID(eventID uuid.UUID) ([]models.Payment, error) {
+	var payments []models.Payment
+	err := p.db.Where("event_id = ?", eventID).Find(&payments).Error
 	return payments, err
 }
 
@@ -98,8 +117,7 @@ func (p *paymentRepoPG) GetPendingPayouts(hostID uuid.UUID) ([]models.Payout, er
 func (p *paymentRepoPG) GetHostEarnings(hostID uuid.UUID) (float64, error) {
 	var totalEarnings float64
 	err := p.db.Model(&models.Payment{}).
-		Joins("JOIN tickets ON payments.ticket_id = tickets.id").
-		Joins("JOIN events ON tickets.event_id = events.id").
+		Joins("JOIN events ON payments.event_id = events.id").
 		Where("events.host_id = ? AND payments.status = ?", hostID, models.PaymentCompleted).
 		Select("COALESCE(SUM(payments.amount), 0)").
 		Scan(&totalEarnings).Error
@@ -109,8 +127,7 @@ func (p *paymentRepoPG) GetHostEarnings(hostID uuid.UUID) (float64, error) {
 func (p *paymentRepoPG) GetHostMonthlyEarnings(hostID uuid.UUID, year, month int) (float64, error) {
 	var monthlyEarnings float64
 	err := p.db.Model(&models.Payment{}).
-		Joins("JOIN tickets ON payments.ticket_id = tickets.id").
-		Joins("JOIN events ON tickets.event_id = events.id").
+		Joins("JOIN events ON payments.event_id = events.id").
 		Where("events.host_id = ? AND payments.status = ? AND EXTRACT(YEAR FROM payments.created_at) = ? AND EXTRACT(MONTH FROM payments.created_at) = ?", 
 			hostID, models.PaymentCompleted, year, month).
 		Select("COALESCE(SUM(payments.amount), 0)").
@@ -121,9 +138,8 @@ func (p *paymentRepoPG) GetHostMonthlyEarnings(hostID uuid.UUID, year, month int
 func (p *paymentRepoPG) GetEventRevenue(eventID uuid.UUID) (float64, error) {
 	var revenue float64
 	err := p.db.Model(&models.Payment{}).
-		Joins("JOIN tickets ON payments.ticket_id = tickets.id").
-		Where("tickets.event_id = ? AND payments.status = ?", eventID, models.PaymentCompleted).
-		Select("COALESCE(SUM(payments.amount), 0)").
+		Where("event_id = ? AND status = ?", eventID, models.PaymentCompleted).
+		Select("COALESCE(SUM(amount), 0)").
 		Scan(&revenue).Error
 	return revenue, err
 }
