@@ -257,3 +257,19 @@ func (h *EventHandler) DeleteEvent(c *fiber.Ctx) error {
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// GetSearchSuggestions handles getting search suggestions
+func (h *EventHandler) GetSearchSuggestions(c *fiber.Ctx) error {
+	query := c.Query("q", "")
+	
+	if len(query) < 2 {
+		return c.JSON([]string{})
+	}
+
+	suggestions, err := h.eventService.GetSearchSuggestions(query, 3)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get suggestions"})
+	}
+
+	return c.JSON(suggestions)
+}

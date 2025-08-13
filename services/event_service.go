@@ -33,6 +33,7 @@ type EventService interface {
 	GetEventsByHostID(hostID uuid.UUID) ([]*models.Event, error)
 	GetAllEvents() ([]*models.Event, error)
 	GetAllEventsWithPagination(params EventQueryParams) (*PaginatedEventResponse, error)
+	GetSearchSuggestions(query string, limit int) ([]string, error)
 	UpdateEvent(event *models.Event) error
 	DeleteEvent(id uuid.UUID) error
 }
@@ -80,6 +81,10 @@ func (s *eventService) GetAllEventsWithPagination(params EventQueryParams) (*Pag
 
 func (s *eventService) UpdateEvent(event *models.Event) error {
 	return s.eventRepo.UpdateEvent(event)
+}
+
+func (s *eventService) GetSearchSuggestions(query string, limit int) ([]string, error) {
+	return s.eventRepo.GetSearchSuggestions(query, limit)
 }
 
 func (s *eventService) DeleteEvent(id uuid.UUID) error {

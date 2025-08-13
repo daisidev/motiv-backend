@@ -109,6 +109,43 @@ func (r *eventRepoPG) UpdateEvent(event *models.Event) error {
 	return r.db.Save(event).Error
 }
 
+func (r *eventRepoPG) GetSearchSuggestions(query string, limit int) ([]string, error) {
+	var suggestions []string
+	
+	// Get unique event titles that match the query
+	var titles []string
+	err := r.db.Model(&models.Event{}).
+		Select("DISTINCT title").
+		Where("title ILIKE ?", "%"+query+"%").
+		Limit(limit).
+		Pluck("title", &titles).Error
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	suggestions = append(suggestions, titles...)
+	
+	// If we don't have enough suggestions from titles, get from locations
+	if len(suggestions) < limit {
+		var locations []string
+		remaining := limit - len(suggestions)
+		err := r.db.Model(&models.Event{}).
+			Select("DISTINCT location").
+			Where("location ILIKE ? AND location NOT IN (?)", "%"+query+"%", suggestions).
+			Limit(remaining).
+			Pluck("location", &locations).Error
+		
+		if err != nil {
+			return suggestions, nil // Return what we have so far
+		}
+		
+		suggestions = append(suggestions, locations...)
+	}
+	
+	return suggestions, nil
+}
+
 func (r *eventRepoPG) DeleteEvent(id uuid.UUID) error {
 	return r.db.Delete(&models.Event{}, id).Error
 }
