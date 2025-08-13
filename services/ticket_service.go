@@ -36,11 +36,18 @@ func (s *ticketService) PurchaseTicket(ticket *models.Ticket) error {
 }
 
 func (s *ticketService) CreateTicketWithQR(ticket *models.Ticket) error {
-	// Generate QR code data
+	// First create the ticket to get the ID
+	err := s.ticketRepo.CreateTicket(ticket)
+	if err != nil {
+		return err
+	}
+	
+	// Now generate QR code data with the actual ticket ID
 	qrData := fmt.Sprintf("MOTIV-TICKET:%s:%s:%s", ticket.ID.String(), ticket.EventID.String(), ticket.UserID.String())
 	ticket.QRCode = qrData
 	
-	return s.ticketRepo.CreateTicket(ticket)
+	// Update the ticket with the QR code
+	return s.ticketRepo.UpdateTicket(ticket)
 }
 
 func (s *ticketService) GetTicketTypeByID(ticketTypeID uuid.UUID) (*models.TicketType, error) {

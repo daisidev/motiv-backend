@@ -8,6 +8,7 @@ import (
 
 type TicketRepository interface {
 	CreateTicket(ticket *models.Ticket) error
+	UpdateTicket(ticket *models.Ticket) error
 	GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error)
 	GetTicketByID(id uuid.UUID) (*models.Ticket, error)
 	

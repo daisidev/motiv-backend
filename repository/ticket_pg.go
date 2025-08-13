@@ -19,6 +19,10 @@ func (r *ticketRepoPG) CreateTicket(ticket *models.Ticket) error {
 	return r.db.Create(ticket).Error
 }
 
+func (r *ticketRepoPG) UpdateTicket(ticket *models.Ticket) error {
+	return r.db.Save(ticket).Error
+}
+
 func (r *ticketRepoPG) GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error) {
 	var tickets []*models.Ticket
 	err := r.db.Preload("Event").Preload("TicketType").Where("user_id = ?", userID).Find(&tickets).Error
