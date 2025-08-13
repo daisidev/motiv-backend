@@ -1,7 +1,8 @@
-
 package repository
 
 import (
+	"log"
+
 	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"gorm.io/gorm"
@@ -29,6 +30,20 @@ func (r *ticketRepoPG) GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, e
 	if err != nil {
 		return nil, err
 	}
+
+	// Debug logging
+	for _, ticket := range tickets {
+		log.Printf("Ticket ID: %s, Event ID: %s, Event Title: %s",
+			ticket.ID.String(),
+			ticket.EventID.String(),
+			func() string {
+				if ticket.Event.Title != "" {
+					return ticket.Event.Title
+				}
+				return "NO_TITLE"
+			}())
+	}
+
 	return tickets, nil
 }
 

@@ -13,9 +13,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/hidenkeys/motiv-backend/services"
-	"github.com/google/uuid"
 )
 
 type PaymentHandler struct {
@@ -37,14 +37,14 @@ func NewPaymentHandler(paymentService services.PaymentService, ticketService ser
 // GET /api/v1/hosts/me/payments/earnings
 func (h *PaymentHandler) GetHostEarnings(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uuid.UUID)
-	
+
 	earnings, err := h.paymentService.GetHostEarnings(userID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to get earnings",
 		})
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"data": earnings,
 	})
@@ -53,17 +53,17 @@ func (h *PaymentHandler) GetHostEarnings(c *fiber.Ctx) error {
 // GET /api/v1/hosts/me/payments/payouts
 func (h *PaymentHandler) GetHostPayouts(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uuid.UUID)
-	
+
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
-	
+
 	payouts, err := h.paymentService.GetHostPayouts(userID, page, limit)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to get payouts",
 		})
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"data": payouts,
 	})
@@ -72,14 +72,14 @@ func (h *PaymentHandler) GetHostPayouts(c *fiber.Ctx) error {
 // GET /api/v1/hosts/me/payments/pending
 func (h *PaymentHandler) GetPendingPayouts(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uuid.UUID)
-	
+
 	payouts, err := h.paymentService.GetPendingPayouts(userID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to get pending payouts",
 		})
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"data": payouts,
 	})
@@ -94,14 +94,14 @@ func (h *PaymentHandler) GetEventRevenue(c *fiber.Ctx) error {
 			"error": "Invalid event ID",
 		})
 	}
-	
+
 	revenue, err := h.paymentService.GetEventRevenue(eventID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to get event revenue",
 		})
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"data": fiber.Map{
 			"revenue": revenue,
@@ -215,7 +215,7 @@ func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
 
 	body := c.Body()
 	secretKey := os.Getenv("PAYSTACK_SECRET_KEY")
-	
+
 	// Verify signature
 	mac := hmac.New(sha512.New, []byte(secretKey))
 	mac.Write(body)
@@ -330,9 +330,9 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Reference     string `json:"reference"`
-		EventID       string `json:"eventId"`
-		AttendeeData  models.AttendeeDataRequest `json:"attendeeData"`
+		Reference     string                       `json:"reference"`
+		EventID       string                       `json:"eventId"`
+		AttendeeData  models.AttendeeDataRequest   `json:"attendeeData"`
 		Attendees     []models.AttendeeDataRequest `json:"attendees"`
 		TicketDetails []models.TicketDetailRequest `json:"ticketDetails"`
 	}
@@ -340,6 +340,9 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
+
+	// Log the request data for debugging
+	log.Printf("Simulate success request - Reference: %s, EventID: %s", req.Reference, req.EventID)
 
 	// Update payment status
 	err = h.paymentService.UpdatePaymentStatus(req.Reference, models.PaymentCompleted, "")
@@ -350,8 +353,11 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 	// Create tickets
 	eventID, err := uuid.Parse(req.EventID)
 	if err != nil {
+		log.Printf("Invalid event ID format: %s", req.EventID)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
 	}
+
+	log.Printf("Creating tickets for event ID: %s", eventID.String())
 
 	// Use all attendees if provided, otherwise use primary attendee data
 	attendees := req.Attendees
@@ -370,7 +376,7 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 		for i := 0; i < ticketDetail.Quantity; i++ {
 			// Cycle through attendees if we have more tickets than attendees
 			currentAttendee := attendees[attendeeIndex%len(attendees)]
-			
+
 			ticket := &models.Ticket{
 				EventID:          eventID,
 				UserID:           userID,
@@ -382,12 +388,14 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 				Quantity:         1, // Each ticket is for one person
 			}
 
+			log.Printf("Creating ticket for event %s, user %s, attendee %s", eventID.String(), userID.String(), currentAttendee.FullName)
+
 			err = h.ticketService.CreateTicketWithQR(ticket)
 			if err != nil {
 				log.Printf("Failed to create ticket: %v", err)
 				continue
 			}
-			
+
 			attendeeIndex++
 		}
 
