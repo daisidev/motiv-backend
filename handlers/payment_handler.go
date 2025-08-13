@@ -134,7 +134,7 @@ func (h *PaymentHandler) InitiatePayment(c *fiber.Ctx) error {
 	}
 
 	// Verify event exists and get event details
-	event, err := h.eventService.GetEventByID(eventID)
+	_, err = h.eventService.GetEventByID(eventID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Event not found"})
 	}
@@ -262,6 +262,8 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 	}
 
 	// Create tickets for each ticket type
+	// Note: For webhook, we'll use the primary attendee data since Paystack metadata has limitations
+	// In a production system, you might want to store attendee details separately and reference them
 	for _, ticketDetail := range event.Data.Metadata.TicketDetails {
 		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
 		if err != nil {
@@ -277,7 +279,7 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 				AttendeeFullName: event.Data.Metadata.AttendeeData.FullName,
 				AttendeeEmail:    event.Data.Metadata.AttendeeData.Email,
 				AttendeePhone:    event.Data.Metadata.AttendeeData.Phone,
-				Quantity:         ticketDetail.Quantity,
+				Quantity:         1, // Each ticket is for one person
 			}
 
 			err = h.ticketService.CreateTicketWithQR(ticket)
@@ -313,6 +315,7 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 		Reference     string `json:"reference"`
 		EventID       string `json:"eventId"`
 		AttendeeData  models.AttendeeDataRequest `json:"attendeeData"`
+		Attendees     []models.AttendeeDataRequest `json:"attendees"`
 		TicketDetails []models.TicketDetailRequest `json:"ticketDetails"`
 	}
 
@@ -332,22 +335,33 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
 	}
 
+	// Use all attendees if provided, otherwise use primary attendee data
+	attendees := req.Attendees
+	if len(attendees) == 0 {
+		attendees = []models.AttendeeDataRequest{req.AttendeeData}
+	}
+
+	attendeeIndex := 0
 	for _, ticketDetail := range req.TicketDetails {
 		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
 		if err != nil {
 			continue
 		}
 
+		// Create individual tickets for each quantity, assigning to different attendees
 		for i := 0; i < ticketDetail.Quantity; i++ {
+			// Cycle through attendees if we have more tickets than attendees
+			currentAttendee := attendees[attendeeIndex%len(attendees)]
+			
 			ticket := &models.Ticket{
 				EventID:          eventID,
 				UserID:           userID,
 				TicketTypeID:     ticketTypeID,
 				PaymentReference: req.Reference,
-				AttendeeFullName: req.AttendeeData.FullName,
-				AttendeeEmail:    req.AttendeeData.Email,
-				AttendeePhone:    req.AttendeeData.Phone,
-				Quantity:         ticketDetail.Quantity,
+				AttendeeFullName: currentAttendee.FullName,
+				AttendeeEmail:    currentAttendee.Email,
+				AttendeePhone:    currentAttendee.Phone,
+				Quantity:         1, // Each ticket is for one person
 			}
 
 			err = h.ticketService.CreateTicketWithQR(ticket)
@@ -355,6 +369,8 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 				log.Printf("Failed to create ticket: %v", err)
 				continue
 			}
+			
+			attendeeIndex++
 		}
 
 		// Update ticket type sold quantity

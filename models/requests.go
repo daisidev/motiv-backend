@@ -99,7 +99,8 @@ type UserResponse struct {
 type PaymentInitiationRequest struct {
 	EventID       string `json:"eventId" validate:"required"`
 	Email         string `json:"email" validate:"required,email"`
-	AttendeeData  AttendeeDataRequest `json:"attendeeData" validate:"required"`
+	AttendeeData  AttendeeDataRequest `json:"attendeeData" validate:"required"` // Primary attendee for payment
+	Attendees     []AttendeeDataRequest `json:"attendees,omitempty"` // All attendees (optional for backward compatibility)
 	TicketDetails []TicketDetailRequest `json:"ticketDetails" validate:"required,min=1"`
 }
 
@@ -108,6 +109,11 @@ type AttendeeDataRequest struct {
 	FullName string `json:"fullName" validate:"required"`
 	Email    string `json:"email" validate:"required,email"`
 	Phone    string `json:"phone" validate:"required"`
+}
+
+// MultipleAttendeesRequest represents multiple attendees for group bookings
+type MultipleAttendeesRequest struct {
+	Attendees []AttendeeDataRequest `json:"attendees" validate:"required,min=1"`
 }
 
 // TicketDetailRequest represents ticket purchase details
