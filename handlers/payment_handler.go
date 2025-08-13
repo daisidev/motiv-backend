@@ -299,3 +299,70 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 func (h *PaymentHandler) handleFailedPayment(event models.PaystackWebhookEvent) error {
 	return h.paymentService.UpdatePaymentStatus(event.Data.Reference, models.PaymentFailed, event.Data.Message)
 }
+
+// POST /api/v1/payments/simulate-success - For testing without webhooks
+func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	var req struct {
+		Reference     string `json:"reference"`
+		EventID       string `json:"eventId"`
+		AttendeeData  models.AttendeeDataRequest `json:"attendeeData"`
+		TicketDetails []models.TicketDetailRequest `json:"ticketDetails"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	// Update payment status
+	err = h.paymentService.UpdatePaymentStatus(req.Reference, models.PaymentCompleted, "")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update payment status"})
+	}
+
+	// Create tickets
+	eventID, err := uuid.Parse(req.EventID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
+	}
+
+	for _, ticketDetail := range req.TicketDetails {
+		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
+		if err != nil {
+			continue
+		}
+
+		for i := 0; i < ticketDetail.Quantity; i++ {
+			ticket := &models.Ticket{
+				EventID:          eventID,
+				UserID:           userID,
+				TicketTypeID:     ticketTypeID,
+				PaymentReference: req.Reference,
+				AttendeeFullName: req.AttendeeData.FullName,
+				AttendeeEmail:    req.AttendeeData.Email,
+				AttendeePhone:    req.AttendeeData.Phone,
+				Quantity:         ticketDetail.Quantity,
+			}
+
+			err = h.ticketService.CreateTicketWithQR(ticket)
+			if err != nil {
+				log.Printf("Failed to create ticket: %v", err)
+				continue
+			}
+		}
+
+		// Update ticket type sold quantity
+		err = h.ticketService.UpdateSoldQuantity(ticketTypeID, ticketDetail.Quantity)
+		if err != nil {
+			log.Printf("Failed to update sold quantity: %v", err)
+		}
+	}
+
+	return c.JSON(fiber.Map{"message": "Payment simulated and tickets created successfully"})
+}

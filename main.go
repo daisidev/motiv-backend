@@ -141,6 +141,7 @@ func main() {
 	payment := api.Group("/payments")
 	payment.Post("/initiate", middleware.AuthRequired(jwtSecret), paymentHandler.InitiatePayment)
 	payment.Post("/webhook", paymentHandler.PaymentWebhook) // No auth required for webhook
+	payment.Post("/simulate-success", middleware.AuthRequired(jwtSecret), paymentHandler.SimulatePaymentSuccess) // For testing without webhooks
 
 	// Ticket routes
 	ticket := api.Group("/tickets")
