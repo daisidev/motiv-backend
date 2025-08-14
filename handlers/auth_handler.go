@@ -1,4 +1,3 @@
-
 package handlers
 
 import (
@@ -16,16 +15,21 @@ import (
 // AuthHandler handles authentication-related requests
 
 type AuthHandler struct {
-	userService       services.UserService
-	googleAuthService *services.GoogleAuthService
-	jwtSecret         []byte
+	userService     services.UserService
+	firebaseService *services.FirebaseService
+	jwtSecret       []byte
 }
 
 func NewAuthHandler(userService services.UserService, jwtSecret []byte) *AuthHandler {
+	firebaseService, err := services.NewFirebaseService()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to initialize Firebase service: %v", err))
+	}
+
 	return &AuthHandler{
-		userService:       userService,
-		googleAuthService: services.NewGoogleAuthService(),
-		jwtSecret:         jwtSecret,
+		userService:     userService,
+		firebaseService: firebaseService,
+		jwtSecret:       jwtSecret,
 	}
 }
 
@@ -35,7 +39,7 @@ func isValidEmail(email string) bool {
 	if len(email) == 0 {
 		return false
 	}
-	
+
 	// Basic email regex pattern
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	return emailRegex.MatchString(email)
@@ -47,7 +51,7 @@ func isValidUsername(username string) bool {
 	if len(username) < 3 || len(username) > 30 {
 		return false
 	}
-	
+
 	// Username can only contain letters, numbers, and underscores
 	usernameRegex := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 	return usernameRegex.MatchString(username)
@@ -113,7 +117,7 @@ func (h *AuthHandler) Signup(c *fiber.Ctx) error {
 	if role == "" {
 		role = models.GuestRole // Default role if not specified
 	}
-	
+
 	// Validate role is valid
 	validRoles := []models.UserRole{models.GuestRole, models.HostRole, models.AdminRole, models.SuperhostRole}
 	isValidRole := false
@@ -126,13 +130,13 @@ func (h *AuthHandler) Signup(c *fiber.Ctx) error {
 	if !isValidRole {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role specified"})
 	}
-	
+
 	// Create user model from request (trim whitespace)
 	newUser := models.User{
 		Name:     strings.TrimSpace(signupReq.Name),
 		Username: strings.TrimSpace(signupReq.Username),
 		Email:    strings.ToLower(strings.TrimSpace(signupReq.Email)), // Normalize email to lowercase
-		Password: signupReq.Password, // Don't trim password as spaces might be intentional
+		Password: signupReq.Password,                                  // Don't trim password as spaces might be intentional
 		Role:     role,
 	}
 
@@ -227,7 +231,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	})
 }
 
-// GoogleAuth handles Google OAuth authentication
+// GoogleAuth handles Firebase Google OAuth authentication
 func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	var googleReq models.GoogleAuthRequest
 	if err := c.BodyParser(&googleReq); err != nil {
@@ -235,26 +239,18 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	// Validate required fields
-	if googleReq.Credential == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Google credential is required"})
-	}
-	if googleReq.User.Email == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email is required"})
+	if googleReq.IDToken == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID token is required"})
 	}
 
-	// Verify the Google token
-	googleUserInfo, err := h.googleAuthService.VerifyIDToken(googleReq.Credential)
+	// Verify the Firebase ID token
+	firebaseUserInfo, err := h.firebaseService.VerifyIDToken(googleReq.IDToken)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid Google token"})
-	}
-
-	// Verify that the email matches
-	if googleUserInfo.Email != googleReq.User.Email {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Email mismatch"})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid ID token"})
 	}
 
 	// Check if user already exists
-	existingUser, err := h.userService.GetUserByEmail(googleUserInfo.Email)
+	existingUser, err := h.userService.GetUserByEmail(firebaseUserInfo.Email)
 	if err == nil && existingUser != nil {
 		// User exists, perform login
 		token := jwt.New(jwt.SigningMethodHS256)
@@ -284,8 +280,10 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	// User doesn't exist, create new user
-	username := h.googleAuthService.GenerateUsername(googleUserInfo.Name, googleUserInfo.Email)
-	
+	// Generate username from email
+	baseUsername := strings.Split(firebaseUserInfo.Email, "@")[0]
+	username := strings.ToLower(strings.ReplaceAll(baseUsername, ".", ""))
+
 	// Ensure username is unique
 	originalUsername := username
 	counter := 1
@@ -299,11 +297,11 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 
 	// Create new user
 	newUser := models.User{
-		Name:     googleUserInfo.Name,
+		Name:     firebaseUserInfo.Name,
 		Username: username,
-		Email:    strings.ToLower(strings.TrimSpace(googleUserInfo.Email)),
+		Email:    strings.ToLower(strings.TrimSpace(firebaseUserInfo.Email)),
 		Password: "", // No password for Google OAuth users
-		Avatar:   googleUserInfo.Picture,
+		Avatar:   firebaseUserInfo.Picture,
 		Role:     models.GuestRole, // Default role
 	}
 
@@ -333,7 +331,8 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"token": t,
-		"user":  userResponse,
+		"token":     t,
+		"user":      userResponse,
+		"isNewUser": true,
 	})
 }

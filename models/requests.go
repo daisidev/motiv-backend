@@ -87,10 +87,9 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
-// GoogleAuthRequest represents the request payload for Google OAuth
+// GoogleAuthRequest represents the request payload for Firebase Google OAuth
 type GoogleAuthRequest struct {
-	Credential string     `json:"credential" validate:"required"`
-	User       GoogleUser `json:"user" validate:"required"`
+	IDToken string `json:"idToken" validate:"required"`
 }
 
 // GoogleUser represents the user data from Google OAuth

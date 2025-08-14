@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"gorm.io/gorm"
@@ -13,6 +15,8 @@ type AttendeeRepository interface {
 	GetEventAttendeesTotalCount(eventID uuid.UUID) (int64, error)
 	GetByHostID(hostID uuid.UUID, limit, offset int) ([]models.Attendee, error)
 	GetHostAttendeesTotalCount(hostID uuid.UUID) (int64, error)
+	GetByHostIDWithFilters(hostID uuid.UUID, limit, offset int, eventID *uuid.UUID, ticketType, status, search string) ([]models.Attendee, error)
+	GetHostAttendeesTotalCountWithFilters(hostID uuid.UUID, eventID *uuid.UUID, ticketType, status, search string) (int64, error)
 	Update(attendee *models.Attendee) error
 	Delete(id uuid.UUID) error
 	CheckInAttendee(attendeeID, checkedInBy uuid.UUID) error
@@ -163,4 +167,76 @@ func (a *attendeeRepoPG) GetHostAttendeeStats(hostID uuid.UUID) (map[string]int6
 	stats["cancelled"] = cancelled
 
 	return stats, nil
+}
+
+func (a *attendeeRepoPG) GetByHostIDWithFilters(hostID uuid.UUID, limit, offset int, eventID *uuid.UUID, ticketType, status, search string) ([]models.Attendee, error) {
+	var attendees []models.Attendee
+	query := a.db.Preload("User").Preload("Event").Preload("Ticket").Preload("Ticket.TicketType").
+		Joins("JOIN events ON attendees.event_id = events.id").
+		Joins("JOIN tickets ON attendees.ticket_id = tickets.id").
+		Joins("JOIN ticket_types ON tickets.ticket_type_id = ticket_types.id").
+		Where("events.host_id = ?", hostID)
+
+	// Apply filters
+	if eventID != nil {
+		query = query.Where("attendees.event_id = ?", *eventID)
+	}
+
+	if ticketType != "" {
+		query = query.Where("ticket_types.name = ?", ticketType)
+	}
+
+	if status != "" {
+		query = query.Where("attendees.status = ?", status)
+	}
+
+	if search != "" {
+		searchPattern := "%" + strings.ToLower(search) + "%"
+		query = query.Where(
+			"LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ? OR LOWER(events.title) LIKE ?",
+			searchPattern, searchPattern, searchPattern,
+		).Joins("JOIN users ON attendees.user_id = users.id")
+	} else {
+		query = query.Joins("JOIN users ON attendees.user_id = users.id")
+	}
+
+	err := query.Order("attendees.created_at DESC").
+		Limit(limit).Offset(offset).
+		Find(&attendees).Error
+	return attendees, err
+}
+
+func (a *attendeeRepoPG) GetHostAttendeesTotalCountWithFilters(hostID uuid.UUID, eventID *uuid.UUID, ticketType, status, search string) (int64, error) {
+	var count int64
+	query := a.db.Model(&models.Attendee{}).
+		Joins("JOIN events ON attendees.event_id = events.id").
+		Joins("JOIN tickets ON attendees.ticket_id = tickets.id").
+		Joins("JOIN ticket_types ON tickets.ticket_type_id = ticket_types.id").
+		Where("events.host_id = ?", hostID)
+
+	// Apply filters
+	if eventID != nil {
+		query = query.Where("attendees.event_id = ?", *eventID)
+	}
+
+	if ticketType != "" {
+		query = query.Where("ticket_types.name = ?", ticketType)
+	}
+
+	if status != "" {
+		query = query.Where("attendees.status = ?", status)
+	}
+
+	if search != "" {
+		searchPattern := "%" + strings.ToLower(search) + "%"
+		query = query.Where(
+			"LOWER(users.name) LIKE ? OR LOWER(users.email) LIKE ? OR LOWER(events.title) LIKE ?",
+			searchPattern, searchPattern, searchPattern,
+		).Joins("JOIN users ON attendees.user_id = users.id")
+	} else {
+		query = query.Joins("JOIN users ON attendees.user_id = users.id")
+	}
+
+	err := query.Count(&count).Error
+	return count, err
 }

@@ -15,6 +15,8 @@ type AttendeeService interface {
 	GetEventAttendeesTotalCount(eventID uuid.UUID) (int64, error)
 	GetHostAttendees(hostID uuid.UUID, limit, offset int) ([]AttendeeResponse, error)
 	GetHostAttendeesTotalCount(hostID uuid.UUID) (int64, error)
+	GetHostAttendeesWithFilters(hostID uuid.UUID, limit, offset int, eventID *uuid.UUID, ticketType, status, search string) ([]AttendeeResponse, error)
+	GetHostAttendeesTotalCountWithFilters(hostID uuid.UUID, eventID *uuid.UUID, ticketType, status, search string) (int64, error)
 	CheckInByQRCode(qrCode string, eventID, checkedInBy uuid.UUID) (*CheckInResult, error)
 	GetEventAttendeeStats(eventID uuid.UUID) (map[string]int64, error)
 	GetHostAttendeeStats(hostID uuid.UUID) (map[string]int64, error)
@@ -85,6 +87,18 @@ func (s *attendeeService) GetHostAttendees(hostID uuid.UUID, limit, offset int) 
 
 func (s *attendeeService) GetHostAttendeesTotalCount(hostID uuid.UUID) (int64, error) {
 	return s.attendeeRepo.GetHostAttendeesTotalCount(hostID)
+}
+
+func (s *attendeeService) GetHostAttendeesWithFilters(hostID uuid.UUID, limit, offset int, eventID *uuid.UUID, ticketType, status, search string) ([]AttendeeResponse, error) {
+	attendees, err := s.attendeeRepo.GetByHostIDWithFilters(hostID, limit, offset, eventID, ticketType, status, search)
+	if err != nil {
+		return nil, err
+	}
+	return s.transformAttendeesToResponse(attendees), nil
+}
+
+func (s *attendeeService) GetHostAttendeesTotalCountWithFilters(hostID uuid.UUID, eventID *uuid.UUID, ticketType, status, search string) (int64, error) {
+	return s.attendeeRepo.GetHostAttendeesTotalCountWithFilters(hostID, eventID, ticketType, status, search)
 }
 
 // Helper function to transform model attendees to response DTOs

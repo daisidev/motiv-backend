@@ -135,6 +135,7 @@ func main() {
 
 	// Host attendees
 	host.Get("/me/attendees", attendeeHandler.GetHostAttendees)
+	host.Get("/me/attendees/export", attendeeHandler.ExportHostAttendees)
 	host.Get("/me/events/:eventId/attendees", attendeeHandler.GetEventAttendees)
 	host.Post("/me/attendees/checkin", attendeeHandler.CheckInAttendee)
 
