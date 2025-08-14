@@ -141,7 +141,7 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		BannerImageURL: req.BannerImageURL,
 		EventType:      req.EventType,
 		HostID:         hostID,
-		Status:         models.DraftEvent,
+		Status:         models.ActiveEvent,
 	}
 
 	// Create ticket types for ticketed events
@@ -190,9 +190,10 @@ func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
 	}
 
-	var updateEvent models.Event
-	if err := c.BodyParser(&updateEvent); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+	var req models.CreateEventRequest
+	if err := c.BodyParser(&req); err != nil {
+		log.Printf("Error parsing request body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request: " + err.Error()})
 	}
 
 	event, err := h.eventService.GetEventByID(eventID)
@@ -211,15 +212,43 @@ func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "You are not authorized to update this event"})
 	}
 
-	event.Title = updateEvent.Title
-	event.Description = updateEvent.Description
-	event.StartDate = updateEvent.StartDate
-	event.StartTime = updateEvent.StartTime
-	event.EndTime = updateEvent.EndTime
-	event.Location = updateEvent.Location
-	event.Tags = updateEvent.Tags
-	event.BannerImageURL = updateEvent.BannerImageURL
-	event.Status = updateEvent.Status
+	// Parse start date if provided
+	if req.StartDate != "" {
+		startDate, err := time.Parse("2006-01-02", req.StartDate)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start date format. Use YYYY-MM-DD"})
+		}
+		event.StartDate = startDate
+	}
+
+	// Update fields
+	if req.Title != "" {
+		event.Title = req.Title
+	}
+	if req.Description != "" {
+		event.Description = req.Description
+	}
+	if req.StartTime != "" {
+		event.StartTime = req.StartTime
+	}
+	if req.EndTime != "" {
+		event.EndTime = req.EndTime
+	}
+	if req.Location != "" {
+		event.Location = req.Location
+	}
+	if req.Tags != nil {
+		event.Tags = req.Tags
+	}
+	if req.BannerImageURL != "" {
+		event.BannerImageURL = req.BannerImageURL
+	}
+	if req.EventType != "" {
+		event.EventType = req.EventType
+	}
+
+	// Always set status to active for updates
+	event.Status = models.ActiveEvent
 
 	if err := h.eventService.UpdateEvent(event); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update event"})

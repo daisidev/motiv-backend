@@ -45,6 +45,7 @@ func main() {
 	reviewService := services.NewReviewService(reviewRepo)
 	paymentService := services.NewPaymentService(paymentRepo, userRepo)
 	analyticsService := services.NewAnalyticsService(analyticsRepo, paymentRepo, attendeeRepo, reviewRepo)
+	attendeeService := services.NewAttendeeService(attendeeRepo, ticketRepo)
 
 	// Create handlers
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
@@ -55,6 +56,7 @@ func main() {
 	reviewHandler := handlers.NewReviewHandler(reviewService)
 	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService, userService)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
+	attendeeHandler := handlers.NewAttendeeHandler(attendeeService, eventService)
 
 	// Create Fiber app
 	app := fiber.New()
@@ -130,6 +132,11 @@ func main() {
 	host.Get("/me/payments/earnings", paymentHandler.GetHostEarnings)
 	host.Get("/me/payments/payouts", paymentHandler.GetHostPayouts)
 	host.Get("/me/payments/pending", paymentHandler.GetPendingPayouts)
+
+	// Host attendees
+	host.Get("/me/attendees", attendeeHandler.GetHostAttendees)
+	host.Get("/me/events/:eventId/attendees", attendeeHandler.GetEventAttendees)
+	host.Post("/me/attendees/checkin", attendeeHandler.CheckInAttendee)
 
 	// Review routes
 	review := api.Group("/reviews")

@@ -106,7 +106,11 @@ func (r *eventRepoPG) GetAllEventsWithPagination(page, limit int, search, tags, 
 }
 
 func (r *eventRepoPG) UpdateEvent(event *models.Event) error {
-	return r.db.Save(event).Error
+	// Use Select to only update specific fields, avoiding issues with host_id
+	return r.db.Model(event).Select(
+		"title", "description", "start_date", "start_time", "end_time", 
+		"location", "tags", "banner_image_url", "event_type", "status", "updated_at",
+	).Updates(event).Error
 }
 
 func (r *eventRepoPG) GetSearchSuggestions(query string, limit int) ([]string, error) {

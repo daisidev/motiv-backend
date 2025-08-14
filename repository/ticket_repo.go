@@ -11,6 +11,7 @@ type TicketRepository interface {
 	UpdateTicket(ticket *models.Ticket) error
 	GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error)
 	GetTicketByID(id uuid.UUID) (*models.Ticket, error)
+	GetByQRCode(qrCode string) (*models.Ticket, error)
 	
 	// Ticket Type methods
 	CreateTicketType(ticketType *models.TicketType) error
