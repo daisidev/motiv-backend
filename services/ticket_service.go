@@ -36,10 +36,21 @@ func (s *ticketService) PurchaseTicket(ticket *models.Ticket) error {
 }
 
 func (s *ticketService) CreateTicketWithQR(ticket *models.Ticket) error {
+	// Validate that EventID and UserID are not nil
+	if ticket.EventID == uuid.Nil {
+		return fmt.Errorf("event ID cannot be nil")
+	}
+	if ticket.UserID == uuid.Nil {
+		return fmt.Errorf("user ID cannot be nil")
+	}
+	if ticket.TicketTypeID == uuid.Nil {
+		return fmt.Errorf("ticket type ID cannot be nil")
+	}
+
 	// First create the ticket to get the ID
 	err := s.ticketRepo.CreateTicket(ticket)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create ticket: %w", err)
 	}
 	
 	// Now generate QR code data with the actual ticket ID
@@ -47,7 +58,12 @@ func (s *ticketService) CreateTicketWithQR(ticket *models.Ticket) error {
 	ticket.QRCode = qrData
 	
 	// Update the ticket with the QR code
-	return s.ticketRepo.UpdateTicket(ticket)
+	err = s.ticketRepo.UpdateTicket(ticket)
+	if err != nil {
+		return fmt.Errorf("failed to update ticket with QR code: %w", err)
+	}
+
+	return nil
 }
 
 func (s *ticketService) GetTicketTypeByID(ticketTypeID uuid.UUID) (*models.TicketType, error) {
@@ -73,4 +89,28 @@ func (s *ticketService) CreateTicketType(ticketType *models.TicketType) error {
 
 func (s *ticketService) GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error) {
 	return s.ticketRepo.GetTicketTypesByEventID(eventID)
+}
+
+// RefreshTicketEventData refreshes event data for tickets that might have missing relationships
+func (s *ticketService) RefreshTicketEventData(userID uuid.UUID) error {
+	tickets, err := s.ticketRepo.GetTicketsByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, ticket := range tickets {
+		if ticket.Event.ID == uuid.Nil || ticket.Event.Title == "" {
+			// Force reload the ticket with proper relationships
+			refreshedTicket, err := s.ticketRepo.GetTicketByID(ticket.ID)
+			if err != nil {
+				continue
+			}
+			// Update the ticket in place if needed
+			if refreshedTicket.Event.ID != uuid.Nil {
+				ticket.Event = refreshedTicket.Event
+			}
+		}
+	}
+
+	return nil
 }

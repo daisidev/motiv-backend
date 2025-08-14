@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
@@ -85,6 +86,19 @@ func (h *UserHandler) GetMyTickets(c *fiber.Ctx) error {
 	tickets, err := h.ticketService.GetTicketsByUserID(userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get tickets"})
+	}
+
+	// Additional logging for debugging
+	log.Printf("Returning %d tickets for user %s", len(tickets), userID.String())
+	for i, ticket := range tickets {
+		log.Printf("Ticket %d: ID=%s, EventID=%s, EventTitle=%s", 
+			i, ticket.ID.String(), ticket.EventID.String(), 
+			func() string {
+				if ticket.Event.Title != "" {
+					return ticket.Event.Title
+				}
+				return "EMPTY_TITLE"
+			}())
 	}
 
 	return c.JSON(tickets)
@@ -199,4 +213,41 @@ func (h *UserHandler) CheckWishlistStatus(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"is_in_wishlist": isInWishlist})
+}
+
+// GetMyTicketsDebug handles debugging ticket data issues
+func (h *UserHandler) GetMyTicketsDebug(c *fiber.Ctx) error {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	tickets, err := h.ticketService.GetTicketsByUserID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get tickets"})
+	}
+
+	// Return detailed debug information
+	debugInfo := make([]map[string]interface{}, len(tickets))
+	for i, ticket := range tickets {
+		debugInfo[i] = map[string]interface{}{
+			"ticket_id":           ticket.ID.String(),
+			"event_id":            ticket.EventID.String(),
+			"event_loaded":        ticket.Event.ID != uuid.Nil,
+			"event_title":         ticket.Event.Title,
+			"event_location":      ticket.Event.Location,
+			"event_start_date":    ticket.Event.StartDate,
+			"ticket_type_loaded":  ticket.TicketType.ID != uuid.Nil,
+			"ticket_type_name":    ticket.TicketType.Name,
+			"attendee_name":       ticket.AttendeeFullName,
+			"payment_reference":   ticket.PaymentReference,
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"total_tickets": len(tickets),
+		"debug_info":    debugInfo,
+	})
 }

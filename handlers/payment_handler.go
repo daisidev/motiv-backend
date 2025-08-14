@@ -390,11 +390,21 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 
 			log.Printf("Creating ticket for event %s, user %s, attendee %s", eventID.String(), userID.String(), currentAttendee.FullName)
 
+			// Verify the event exists before creating the ticket
+			event, err := h.eventService.GetEventByID(eventID)
+			if err != nil {
+				log.Printf("Event %s not found when creating ticket: %v", eventID.String(), err)
+				continue
+			}
+			log.Printf("Event found: %s - %s", event.ID.String(), event.Title)
+
 			err = h.ticketService.CreateTicketWithQR(ticket)
 			if err != nil {
 				log.Printf("Failed to create ticket: %v", err)
 				continue
 			}
+
+			log.Printf("Successfully created ticket %s for event %s", ticket.ID.String(), eventID.String())
 
 			attendeeIndex++
 		}

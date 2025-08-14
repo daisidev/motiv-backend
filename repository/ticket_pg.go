@@ -26,22 +26,33 @@ func (r *ticketRepoPG) UpdateTicket(ticket *models.Ticket) error {
 
 func (r *ticketRepoPG) GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error) {
 	var tickets []*models.Ticket
-	err := r.db.Preload("Event").Preload("TicketType").Where("user_id = ?", userID).Find(&tickets).Error
+	
+	// Use explicit joins to ensure event data is loaded
+	err := r.db.
+		Preload("Event").
+		Preload("TicketType").
+		Joins("LEFT JOIN events ON tickets.event_id = events.id").
+		Where("tickets.user_id = ?", userID).
+		Find(&tickets).Error
+	
 	if err != nil {
+		log.Printf("Error fetching tickets for user %s: %v", userID.String(), err)
 		return nil, err
 	}
 
-	// Debug logging
+	// Debug logging with more details
+	log.Printf("Found %d tickets for user %s", len(tickets), userID.String())
 	for _, ticket := range tickets {
-		log.Printf("Ticket ID: %s, Event ID: %s, Event Title: %s",
+		eventTitle := "UNKNOWN_EVENT"
+		if ticket.Event.ID != uuid.Nil {
+			eventTitle = ticket.Event.Title
+		}
+		
+		log.Printf("Ticket ID: %s, Event ID: %s, Event Title: %s, Event Loaded: %t",
 			ticket.ID.String(),
 			ticket.EventID.String(),
-			func() string {
-				if ticket.Event.Title != "" {
-					return ticket.Event.Title
-				}
-				return "NO_TITLE"
-			}())
+			eventTitle,
+			ticket.Event.ID != uuid.Nil)
 	}
 
 	return tickets, nil
