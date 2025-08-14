@@ -193,6 +193,25 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		}
 		// Attach ticket types to the event for response
 		newEvent.TicketTypes = ticketTypes
+	} else if req.EventType == "free" {
+		// Create a default free ticket type for free events
+		freeTicketType := models.TicketType{
+			EventID:       newEvent.ID,
+			Name:          "Free Entry",
+			Price:         0,
+			Description:   "Free admission to this event",
+			TotalQuantity: 1000, // Default capacity for free events
+			SoldQuantity:  0,
+		}
+
+		err = h.ticketService.CreateTicketType(&freeTicketType)
+		if err != nil {
+			log.Printf("Error creating free ticket type: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create free ticket type"})
+		}
+
+		// Attach the free ticket type to the event for response
+		newEvent.TicketTypes = []models.TicketType{freeTicketType}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(newEvent)

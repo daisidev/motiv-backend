@@ -149,13 +149,14 @@ func main() {
 	// Payment routes
 	payment := api.Group("/payments")
 	payment.Post("/initiate", middleware.AuthRequired(jwtSecret), paymentHandler.InitiatePayment)
-	payment.Post("/webhook", paymentHandler.PaymentWebhook) // No auth required for webhook
+	payment.Post("/webhook", paymentHandler.PaymentWebhook)                                                      // No auth required for webhook
 	payment.Post("/simulate-success", middleware.AuthRequired(jwtSecret), paymentHandler.SimulatePaymentSuccess) // For testing without webhooks
 
 	// Ticket routes
 	ticket := api.Group("/tickets")
 	ticket.Use(middleware.AuthRequired(jwtSecret))
 	ticket.Post("/purchase", ticketHandler.PurchaseTicket)
+	ticket.Post("/rsvp", ticketHandler.RSVPFreeEvent)
 
 	// Start server
 	log.Fatal(app.Listen(":8080"))
