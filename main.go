@@ -52,7 +52,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(userService, jwtSecret)
 	userHandler := handlers.NewUserHandler(userService, wishlistService, ticketService)
 	eventHandler := handlers.NewEventHandler(eventService, ticketService)
-	ticketHandler := handlers.NewTicketHandler(ticketService)
+	ticketHandler := handlers.NewTicketHandler(ticketService, eventService)
 	reviewHandler := handlers.NewReviewHandler(reviewService)
 	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService, userService)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)

@@ -11,10 +11,14 @@ import (
 // TicketHandler handles ticket-related requests
 type TicketHandler struct {
 	ticketService services.TicketService
+	eventService  services.EventService
 }
 
-func NewTicketHandler(ticketService services.TicketService) *TicketHandler {
-	return &TicketHandler{ticketService}
+func NewTicketHandler(ticketService services.TicketService, eventService services.EventService) *TicketHandler {
+	return &TicketHandler{
+		ticketService: ticketService,
+		eventService:  eventService,
+	}
 }
 
 // PurchaseTicket handles purchasing a ticket
@@ -83,7 +87,33 @@ func (h *TicketHandler) RSVPFreeEvent(c *fiber.Ctx) error {
 	// Get the free ticket type for this event
 	ticketTypes, err := h.ticketService.GetTicketTypesByEventID(eventID)
 	if err != nil || len(ticketTypes) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No ticket types found for this event"})
+		// For free events, create a default free ticket type if none exists
+		// First check if this is a free event
+		event, eventErr := h.eventService.GetEventByID(eventID)
+		if eventErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Event not found"})
+		}
+
+		if event.EventType == "free" {
+			// Create a default free ticket type
+			freeTicketType := models.TicketType{
+				EventID:       eventID,
+				Name:          "Free Entry",
+				Price:         0,
+				Description:   "Free admission to this event",
+				TotalQuantity: 1000, // Default capacity for free events
+				SoldQuantity:  0,
+			}
+
+			createErr := h.ticketService.CreateTicketType(&freeTicketType)
+			if createErr != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create free ticket type"})
+			}
+
+			ticketTypes = []*models.TicketType{&freeTicketType}
+		} else {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No ticket types found for this event"})
+		}
 	}
 
 	// Find the free ticket type (price = 0)
