@@ -118,9 +118,8 @@ func (p *paymentRepoPG) GetPendingPayouts(hostID uuid.UUID) ([]models.Payout, er
 func (p *paymentRepoPG) GetHostEarnings(hostID uuid.UUID) (float64, error) {
 	var totalEarnings float64
 	err := p.db.Model(&models.Payment{}).
-		Joins("JOIN events ON payments.event_id = events.id").
-		Where("events.host_id = ? AND payments.status = ?", hostID, models.PaymentCompleted).
-		Select("COALESCE(SUM(payments.amount), 0)").
+		Where("event_id IN (SELECT id FROM events WHERE host_id = ?) AND status = ?", hostID, models.PaymentCompleted).
+		Select("COALESCE(SUM(amount), 0)").
 		Scan(&totalEarnings).Error
 	return totalEarnings, err
 }
@@ -128,10 +127,9 @@ func (p *paymentRepoPG) GetHostEarnings(hostID uuid.UUID) (float64, error) {
 func (p *paymentRepoPG) GetHostMonthlyEarnings(hostID uuid.UUID, year, month int) (float64, error) {
 	var monthlyEarnings float64
 	err := p.db.Model(&models.Payment{}).
-		Joins("JOIN events ON payments.event_id = events.id").
-		Where("events.host_id = ? AND payments.status = ? AND EXTRACT(YEAR FROM payments.created_at) = ? AND EXTRACT(MONTH FROM payments.created_at) = ?",
+		Where("event_id IN (SELECT id FROM events WHERE host_id = ?) AND status = ? AND EXTRACT(YEAR FROM created_at) = ? AND EXTRACT(MONTH FROM created_at) = ?",
 			hostID, models.PaymentCompleted, year, month).
-		Select("COALESCE(SUM(payments.amount), 0)").
+		Select("COALESCE(SUM(amount), 0)").
 		Scan(&monthlyEarnings).Error
 	return monthlyEarnings, err
 }

@@ -36,7 +36,14 @@ func NewPaymentHandler(paymentService services.PaymentService, ticketService ser
 
 // GET /api/v1/hosts/me/payments/earnings
 func (h *PaymentHandler) GetHostEarnings(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to parse user ID",
+		})
+	}
 
 	earnings, err := h.paymentService.GetHostEarnings(userID)
 	if err != nil {
@@ -52,7 +59,14 @@ func (h *PaymentHandler) GetHostEarnings(c *fiber.Ctx) error {
 
 // GET /api/v1/hosts/me/payments/payouts
 func (h *PaymentHandler) GetHostPayouts(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to parse user ID",
+		})
+	}
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -71,7 +85,14 @@ func (h *PaymentHandler) GetHostPayouts(c *fiber.Ctx) error {
 
 // GET /api/v1/hosts/me/payments/pending
 func (h *PaymentHandler) GetPendingPayouts(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to parse user ID",
+		})
+	}
 
 	payouts, err := h.paymentService.GetPendingPayouts(userID)
 	if err != nil {

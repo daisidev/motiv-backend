@@ -129,6 +129,21 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start date format. Use YYYY-MM-DD"})
 	}
 
+	// Determine status - default to active if not specified
+	status := models.ActiveEvent
+	if req.Status != "" {
+		switch req.Status {
+		case "draft":
+			status = models.DraftEvent
+		case "active":
+			status = models.ActiveEvent
+		case "cancelled":
+			status = models.CancelledEvent
+		default:
+			status = models.ActiveEvent
+		}
+	}
+
 	// Create the event
 	newEvent := models.Event{
 		Title:          req.Title,
@@ -141,7 +156,7 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		BannerImageURL: req.BannerImageURL,
 		EventType:      req.EventType,
 		HostID:         hostID,
-		Status:         models.ActiveEvent,
+		Status:         status,
 	}
 
 	// Create ticket types for ticketed events
@@ -247,8 +262,22 @@ func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 		event.EventType = req.EventType
 	}
 
-	// Always set status to active for updates
-	event.Status = models.ActiveEvent
+	// Handle status update - default to active if not specified in request
+	if req.Status != "" {
+		switch req.Status {
+		case "draft":
+			event.Status = models.DraftEvent
+		case "active":
+			event.Status = models.ActiveEvent
+		case "cancelled":
+			event.Status = models.CancelledEvent
+		default:
+			event.Status = models.ActiveEvent
+		}
+	} else {
+		// Default to active for updates if no status is specified
+		event.Status = models.ActiveEvent
+	}
 
 	if err := h.eventService.UpdateEvent(event); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update event"})
@@ -290,7 +319,7 @@ func (h *EventHandler) DeleteEvent(c *fiber.Ctx) error {
 // GetSearchSuggestions handles getting search suggestions
 func (h *EventHandler) GetSearchSuggestions(c *fiber.Ctx) error {
 	query := c.Query("q", "")
-	
+
 	if len(query) < 2 {
 		return c.JSON([]string{})
 	}

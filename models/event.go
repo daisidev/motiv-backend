@@ -1,4 +1,3 @@
-
 package models
 
 import (
@@ -32,7 +31,7 @@ type Event struct {
 	HostID         uuid.UUID      `gorm:"type:uuid;not null" json:"host_id"`
 	Host           User           `gorm:"foreignKey:HostID" json:"host"`
 	TicketTypes    []TicketType   `gorm:"foreignKey:EventID" json:"ticket_types,omitempty"`
-	Status         EventStatus    `gorm:"type:varchar(20);not null;default:'draft'" json:"status"`
+	Status         EventStatus    `gorm:"type:varchar(20);not null;default:'active'" json:"status"`
 }
 
 func (e *Event) BeforeCreate(tx *gorm.DB) (err error) {

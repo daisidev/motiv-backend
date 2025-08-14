@@ -3,8 +3,8 @@ package repository
 import (
 	"time"
 
-	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/google/uuid"
+	"github.com/hidenkeys/motiv-backend/models"
 	"gorm.io/gorm"
 )
 
@@ -12,15 +12,15 @@ type AnalyticsRepository interface {
 	// Event Views
 	RecordEventView(view *models.EventView) error
 	GetEventViews(eventID uuid.UUID, startDate, endDate time.Time) ([]models.EventView, error)
-	
+
 	// Event Analytics
 	GetEventAnalytics(eventID uuid.UUID) (*models.EventAnalytics, error)
 	UpdateEventAnalytics(analytics *models.EventAnalytics) error
-	
+
 	// Host Analytics
 	GetHostAnalytics(hostID uuid.UUID) (*models.HostAnalytics, error)
 	UpdateHostAnalytics(analytics *models.HostAnalytics) error
-	
+
 	// Dashboard Stats
 	GetHostDashboardStats(hostID uuid.UUID) (map[string]interface{}, error)
 	GetEventPerformanceStats(eventID uuid.UUID) (map[string]interface{}, error)
@@ -84,22 +84,20 @@ func (a *analyticsRepoPG) UpdateHostAnalytics(analytics *models.HostAnalytics) e
 
 func (a *analyticsRepoPG) GetHostDashboardStats(hostID uuid.UUID) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
-	
+
 	// Total events
 	var totalEvents int64
 	a.db.Model(&models.Event{}).Where("host_id = ?", hostID).Count(&totalEvents)
 	stats["total_events"] = totalEvents
-	
+
 	// Total revenue
 	var totalRevenue float64
 	a.db.Model(&models.Payment{}).
-		Joins("JOIN tickets ON payments.ticket_id = tickets.id").
-		Joins("JOIN events ON tickets.event_id = events.id").
-		Where("events.host_id = ? AND payments.status = ?", hostID, models.PaymentCompleted).
-		Select("COALESCE(SUM(payments.amount), 0)").
+		Where("event_id IN (SELECT id FROM events WHERE host_id = ?) AND status = ?", hostID, models.PaymentCompleted).
+		Select("COALESCE(SUM(amount), 0)").
 		Scan(&totalRevenue)
 	stats["total_revenue"] = totalRevenue
-	
+
 	// Total attendees
 	var totalAttendees int64
 	a.db.Model(&models.Attendee{}).
@@ -107,31 +105,29 @@ func (a *analyticsRepoPG) GetHostDashboardStats(hostID uuid.UUID) (map[string]in
 		Where("events.host_id = ?", hostID).
 		Count(&totalAttendees)
 	stats["total_attendees"] = totalAttendees
-	
+
 	// This month's revenue
 	now := time.Now()
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	var monthlyRevenue float64
 	a.db.Model(&models.Payment{}).
-		Joins("JOIN tickets ON payments.ticket_id = tickets.id").
-		Joins("JOIN events ON tickets.event_id = events.id").
-		Where("events.host_id = ? AND payments.status = ? AND payments.created_at >= ?", 
+		Where("event_id IN (SELECT id FROM events WHERE host_id = ?) AND status = ? AND created_at >= ?",
 			hostID, models.PaymentCompleted, startOfMonth).
-		Select("COALESCE(SUM(payments.amount), 0)").
+		Select("COALESCE(SUM(amount), 0)").
 		Scan(&monthlyRevenue)
 	stats["monthly_revenue"] = monthlyRevenue
-	
+
 	return stats, nil
 }
 
 func (a *analyticsRepoPG) GetEventPerformanceStats(eventID uuid.UUID) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
-	
+
 	// Total views
 	var totalViews int64
 	a.db.Model(&models.EventView{}).Where("event_id = ?", eventID).Count(&totalViews)
 	stats["total_views"] = totalViews
-	
+
 	// Unique views
 	var uniqueViews int64
 	a.db.Model(&models.EventView{}).
@@ -139,28 +135,27 @@ func (a *analyticsRepoPG) GetEventPerformanceStats(eventID uuid.UUID) (map[strin
 		Distinct("COALESCE(user_id, ip_address)").
 		Count(&uniqueViews)
 	stats["unique_views"] = uniqueViews
-	
+
 	// Tickets sold
 	var ticketsSold int64
 	a.db.Model(&models.Ticket{}).Where("event_id = ?", eventID).Count(&ticketsSold)
 	stats["tickets_sold"] = ticketsSold
-	
+
 	// Revenue
 	var revenue float64
 	a.db.Model(&models.Payment{}).
-		Joins("JOIN tickets ON payments.ticket_id = tickets.id").
-		Where("tickets.event_id = ? AND payments.status = ?", eventID, models.PaymentCompleted).
-		Select("COALESCE(SUM(payments.amount), 0)").
+		Where("event_id = ? AND status = ?", eventID, models.PaymentCompleted).
+		Select("COALESCE(SUM(amount), 0)").
 		Scan(&revenue)
 	stats["revenue"] = revenue
-	
+
 	// Conversion rate
 	var conversionRate float64
 	if uniqueViews > 0 {
 		conversionRate = float64(ticketsSold) / float64(uniqueViews) * 100
 	}
 	stats["conversion_rate"] = conversionRate
-	
+
 	return stats, nil
 }
 
@@ -170,30 +165,28 @@ func (a *analyticsRepoPG) GetMonthlyRevenueStats(hostID uuid.UUID, year int) ([]
 		Revenue float64
 		Count   int64
 	}
-	
+
 	err := a.db.Model(&models.Payment{}).
-		Select("EXTRACT(MONTH FROM payments.created_at) as month, COALESCE(SUM(payments.amount), 0) as revenue, COUNT(*) as count").
-		Joins("JOIN tickets ON payments.ticket_id = tickets.id").
-		Joins("JOIN events ON tickets.event_id = events.id").
-		Where("events.host_id = ? AND payments.status = ? AND EXTRACT(YEAR FROM payments.created_at) = ?", 
+		Select("EXTRACT(MONTH FROM created_at) as month, COALESCE(SUM(amount), 0) as revenue, COUNT(*) as count").
+		Where("event_id IN (SELECT id FROM events WHERE host_id = ?) AND status = ? AND EXTRACT(YEAR FROM created_at) = ?",
 			hostID, models.PaymentCompleted, year).
-		Group("EXTRACT(MONTH FROM payments.created_at)").
+		Group("EXTRACT(MONTH FROM created_at)").
 		Order("month").
 		Find(&results).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert to map format
 	var monthlyStats []map[string]interface{}
 	for _, result := range results {
 		monthlyStats = append(monthlyStats, map[string]interface{}{
-			"month":    result.Month,
-			"revenue":  result.Revenue,
-			"count":    result.Count,
+			"month":   result.Month,
+			"revenue": result.Revenue,
+			"count":   result.Count,
 		})
 	}
-	
+
 	return monthlyStats, nil
 }
