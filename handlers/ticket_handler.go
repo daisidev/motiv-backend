@@ -12,12 +12,16 @@ import (
 type TicketHandler struct {
 	ticketService services.TicketService
 	eventService  services.EventService
+	userService   services.UserService
+	emailService  services.EmailService
 }
 
-func NewTicketHandler(ticketService services.TicketService, eventService services.EventService) *TicketHandler {
+func NewTicketHandler(ticketService services.TicketService, eventService services.EventService, userService services.UserService, emailService services.EmailService) *TicketHandler {
 	return &TicketHandler{
 		ticketService: ticketService,
 		eventService:  eventService,
+		userService:   userService,
+		emailService:  emailService,
 	}
 }
 
@@ -159,6 +163,30 @@ func (h *TicketHandler) RSVPFreeEvent(c *fiber.Ctx) error {
 	if err := h.ticketService.UpdateSoldQuantity(freeTicketType.ID, 1); err != nil {
 		// Log the error but don't fail the request
 		// log.Printf("Failed to update sold quantity: %v", err)
+	}
+
+	// Get event details and host for email notifications
+	eventDetails, err := h.eventService.GetEventByID(eventID)
+	if err == nil {
+		// Get user details
+		userDetails, userErr := h.userService.GetUserByID(userID)
+		if userErr == nil {
+			// Get host details
+			host, hostErr := h.userService.GetUserByID(eventDetails.HostID)
+			if hostErr == nil {
+				// Send ticket confirmation email to customer
+				if emailErr := h.emailService.SendTicketConfirmation(ticket, eventDetails, userDetails); emailErr != nil {
+					// Log the error but don't fail the request
+					// log.Printf("Failed to send ticket confirmation email: %v", emailErr)
+				}
+
+				// Send notification email to host
+				if emailErr := h.emailService.SendHostNotification(ticket, eventDetails, userDetails, host); emailErr != nil {
+					// Log the error but don't fail the request
+					// log.Printf("Failed to send host notification email: %v", emailErr)
+				}
+			}
+		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

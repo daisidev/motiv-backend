@@ -46,15 +46,16 @@ func main() {
 	paymentService := services.NewPaymentService(paymentRepo, userRepo)
 	analyticsService := services.NewAnalyticsService(analyticsRepo, paymentRepo, attendeeRepo, reviewRepo)
 	attendeeService := services.NewAttendeeService(attendeeRepo, ticketRepo)
+	emailService := services.NewBrevoEmailService()
 
 	// Create handlers
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	authHandler := handlers.NewAuthHandler(userService, jwtSecret)
 	userHandler := handlers.NewUserHandler(userService, wishlistService, ticketService)
 	eventHandler := handlers.NewEventHandler(eventService, ticketService)
-	ticketHandler := handlers.NewTicketHandler(ticketService, eventService)
+	ticketHandler := handlers.NewTicketHandler(ticketService, eventService, userService, emailService)
 	reviewHandler := handlers.NewReviewHandler(reviewService)
-	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService, userService)
+	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService, userService, emailService)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 	attendeeHandler := handlers.NewAttendeeHandler(attendeeService, eventService)
 

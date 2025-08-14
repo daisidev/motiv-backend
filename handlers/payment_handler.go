@@ -23,14 +23,16 @@ type PaymentHandler struct {
 	ticketService  services.TicketService
 	eventService   services.EventService
 	userService    services.UserService
+	emailService   services.EmailService
 }
 
-func NewPaymentHandler(paymentService services.PaymentService, ticketService services.TicketService, eventService services.EventService, userService services.UserService) *PaymentHandler {
+func NewPaymentHandler(paymentService services.PaymentService, ticketService services.TicketService, eventService services.EventService, userService services.UserService, emailService services.EmailService) *PaymentHandler {
 	return &PaymentHandler{
 		paymentService: paymentService,
 		ticketService:  ticketService,
 		eventService:   eventService,
 		userService:    userService,
+		emailService:   emailService,
 	}
 }
 
@@ -287,15 +289,34 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 		return fmt.Errorf("invalid event ID in metadata: %w", err)
 	}
 
+	// Get event details for email
+	eventDetails, err := h.eventService.GetEventByID(eventID)
+	if err != nil {
+		return fmt.Errorf("failed to get event details: %w", err)
+	}
+
+	// Get host details for email
+	host, err := h.userService.GetUserByID(eventDetails.HostID)
+	if err != nil {
+		return fmt.Errorf("failed to get host details: %w", err)
+	}
+
 	// Find user by email (assuming the customer email matches user email)
 	userID, err := h.paymentService.GetUserIDByEmail(event.Data.Customer.Email)
 	if err != nil {
 		return fmt.Errorf("failed to find user by email: %w", err)
 	}
 
+	// Get user details for email
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user details: %w", err)
+	}
+
 	// Create tickets for each ticket type
 	// Note: For webhook, we'll use the primary attendee data since Paystack metadata has limitations
 	// In a production system, you might want to store attendee details separately and reference them
+	var ticketsCreated []*models.Ticket
 	for _, ticketDetail := range event.Data.Metadata.TicketDetails {
 		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
 		if err != nil {
@@ -318,12 +339,29 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 			if err != nil {
 				return fmt.Errorf("failed to create ticket: %w", err)
 			}
+
+			ticketsCreated = append(ticketsCreated, ticket)
 		}
 
 		// Update ticket type sold quantity
 		err = h.ticketService.UpdateSoldQuantity(ticketTypeID, ticketDetail.Quantity)
 		if err != nil {
 			return fmt.Errorf("failed to update sold quantity: %w", err)
+		}
+	}
+
+	// Send email notifications for each ticket created
+	for _, ticket := range ticketsCreated {
+		// Send ticket confirmation email to customer
+		if err := h.emailService.SendTicketConfirmation(ticket, eventDetails, user); err != nil {
+			log.Printf("Failed to send ticket confirmation email: %v", err)
+			// Don't fail the entire operation if email fails
+		}
+
+		// Send notification email to host
+		if err := h.emailService.SendHostNotification(ticket, eventDetails, user, host); err != nil {
+			log.Printf("Failed to send host notification email: %v", err)
+			// Don't fail the entire operation if email fails
 		}
 	}
 
@@ -344,7 +382,7 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 	}
 
 	// Validate that the user exists
-	_, err = h.userService.GetUserByID(userID)
+	userDetails, err := h.userService.GetUserByID(userID)
 	if err != nil {
 		log.Printf("User with ID %s not found: %v", userID, err)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User not found"})
@@ -380,12 +418,27 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 
 	log.Printf("Creating tickets for event ID: %s", eventID.String())
 
+	// Get event details for email
+	eventDetails, err := h.eventService.GetEventByID(eventID)
+	if err != nil {
+		log.Printf("Event %s not found when creating ticket: %v", eventID.String(), err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Event not found"})
+	}
+
+	// Get host details for email
+	host, err := h.userService.GetUserByID(eventDetails.HostID)
+	if err != nil {
+		log.Printf("Host with ID %s not found: %v", eventDetails.HostID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Host not found"})
+	}
+
 	// Use all attendees if provided, otherwise use primary attendee data
 	attendees := req.Attendees
 	if len(attendees) == 0 {
 		attendees = []models.AttendeeDataRequest{req.AttendeeData}
 	}
 
+	var ticketsCreated []*models.Ticket
 	attendeeIndex := 0
 	for _, ticketDetail := range req.TicketDetails {
 		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
@@ -411,14 +464,6 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 
 			log.Printf("Creating ticket for event %s, user %s, attendee %s", eventID.String(), userID.String(), currentAttendee.FullName)
 
-			// Verify the event exists before creating the ticket
-			event, err := h.eventService.GetEventByID(eventID)
-			if err != nil {
-				log.Printf("Event %s not found when creating ticket: %v", eventID.String(), err)
-				continue
-			}
-			log.Printf("Event found: %s - %s", event.ID.String(), event.Title)
-
 			err = h.ticketService.CreateTicketWithQR(ticket)
 			if err != nil {
 				log.Printf("Failed to create ticket: %v", err)
@@ -426,6 +471,7 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 			}
 
 			log.Printf("Successfully created ticket %s for event %s", ticket.ID.String(), eventID.String())
+			ticketsCreated = append(ticketsCreated, ticket)
 
 			attendeeIndex++
 		}
@@ -434,6 +480,21 @@ func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
 		err = h.ticketService.UpdateSoldQuantity(ticketTypeID, ticketDetail.Quantity)
 		if err != nil {
 			log.Printf("Failed to update sold quantity: %v", err)
+		}
+	}
+
+	// Send email notifications for each ticket created
+	for _, ticket := range ticketsCreated {
+		// Send ticket confirmation email to customer
+		if err := h.emailService.SendTicketConfirmation(ticket, eventDetails, userDetails); err != nil {
+			log.Printf("Failed to send ticket confirmation email: %v", err)
+			// Don't fail the entire operation if email fails
+		}
+
+		// Send notification email to host
+		if err := h.emailService.SendHostNotification(ticket, eventDetails, userDetails, host); err != nil {
+			log.Printf("Failed to send host notification email: %v", err)
+			// Don't fail the entire operation if email fails
 		}
 	}
 
