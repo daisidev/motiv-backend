@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hidenkeys/motiv-backend/services"
 	"github.com/google/uuid"
 )
@@ -21,7 +22,14 @@ func NewAnalyticsHandler(analyticsService services.AnalyticsService) *AnalyticsH
 
 // GET /api/v1/hosts/me/analytics/dashboard
 func (h *AnalyticsHandler) GetHostDashboard(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to parse user ID",
+		})
+	}
 	
 	stats, err := h.analyticsService.GetHostDashboardStats(userID)
 	if err != nil {
@@ -37,7 +45,14 @@ func (h *AnalyticsHandler) GetHostDashboard(c *fiber.Ctx) error {
 
 // GET /api/v1/hosts/me/analytics/revenue?year=2024
 func (h *AnalyticsHandler) GetMonthlyRevenue(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uuid.UUID)
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to parse user ID",
+		})
+	}
 	
 	yearStr := c.Query("year", strconv.Itoa(time.Now().Year()))
 	year, err := strconv.Atoi(yearStr)
@@ -103,9 +118,14 @@ func (h *AnalyticsHandler) RecordEventView(c *fiber.Ctx) error {
 	
 	// Get user ID if authenticated (optional)
 	var userID *uuid.UUID
-	if userIDValue := c.Locals("userID"); userIDValue != nil {
-		if uid, ok := userIDValue.(uuid.UUID); ok {
-			userID = &uid
+	if userValue := c.Locals("user"); userValue != nil {
+		if user, ok := userValue.(*jwt.Token); ok {
+			claims := user.Claims.(jwt.MapClaims)
+			if userIDStr, ok := claims["user_id"].(string); ok {
+				if uid, err := uuid.Parse(userIDStr); err == nil {
+					userID = &uid
+				}
+			}
 		}
 	}
 	
