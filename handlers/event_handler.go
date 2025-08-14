@@ -108,19 +108,18 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request: " + err.Error()})
 	}
 
-	// Validate event type
-	if req.EventType != "ticketed" && req.EventType != "free" {
+	// Validate event type and related ticket type constraints using tagged switch
+	switch req.EventType {
+	case "ticketed":
+		if len(req.TicketTypes) == 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ticketed events must have at least one ticket type"})
+		}
+	case "free":
+		if len(req.TicketTypes) > 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Free events cannot have ticket types"})
+		}
+	default:
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Event type must be 'ticketed' or 'free'"})
-	}
-
-	// For ticketed events, validate that ticket types are provided
-	if req.EventType == "ticketed" && len(req.TicketTypes) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ticketed events must have at least one ticket type"})
-	}
-
-	// For free events, ensure no ticket types are provided
-	if req.EventType == "free" && len(req.TicketTypes) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Free events cannot have ticket types"})
 	}
 
 	// Parse start date
@@ -159,7 +158,7 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		Status:         status,
 	}
 
-	// Create ticket types for ticketed events
+	// Create ticket types slice for possible ticketed event
 	var ticketTypes []models.TicketType
 	if req.EventType == "ticketed" {
 		for _, ticketReq := range req.TicketTypes {
@@ -181,8 +180,9 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create event"})
 	}
 
-	// Create ticket types for ticketed events
-	if req.EventType == "ticketed" {
+	// Create ticket types or default free ticket type depending on event type
+	switch req.EventType {
+	case "ticketed":
 		for i := range ticketTypes {
 			ticketTypes[i].EventID = newEvent.ID
 			err = h.ticketService.CreateTicketType(&ticketTypes[i])
@@ -193,7 +193,7 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		}
 		// Attach ticket types to the event for response
 		newEvent.TicketTypes = ticketTypes
-	} else if req.EventType == "free" {
+	case "free":
 		// Create a default free ticket type for free events
 		freeTicketType := models.TicketType{
 			EventID:       newEvent.ID,

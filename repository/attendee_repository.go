@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/google/uuid"
+	"github.com/hidenkeys/motiv-backend/models"
 	"gorm.io/gorm"
 )
 
@@ -10,7 +10,9 @@ type AttendeeRepository interface {
 	Create(attendee *models.Attendee) error
 	GetByID(id uuid.UUID) (*models.Attendee, error)
 	GetByEventID(eventID uuid.UUID, limit, offset int) ([]models.Attendee, error)
+	GetEventAttendeesTotalCount(eventID uuid.UUID) (int64, error)
 	GetByHostID(hostID uuid.UUID, limit, offset int) ([]models.Attendee, error)
+	GetHostAttendeesTotalCount(hostID uuid.UUID) (int64, error)
 	Update(attendee *models.Attendee) error
 	Delete(id uuid.UUID) error
 	CheckInAttendee(attendeeID, checkedInBy uuid.UUID) error
@@ -47,6 +49,14 @@ func (a *attendeeRepoPG) GetByEventID(eventID uuid.UUID, limit, offset int) ([]m
 	return attendees, err
 }
 
+func (a *attendeeRepoPG) GetEventAttendeesTotalCount(eventID uuid.UUID) (int64, error) {
+	var count int64
+	err := a.db.Model(&models.Attendee{}).
+		Where("event_id = ?", eventID).
+		Count(&count).Error
+	return count, err
+}
+
 func (a *attendeeRepoPG) GetByHostID(hostID uuid.UUID, limit, offset int) ([]models.Attendee, error) {
 	var attendees []models.Attendee
 	err := a.db.Preload("User").Preload("Event").Preload("Ticket").Preload("Ticket.TicketType").
@@ -56,6 +66,15 @@ func (a *attendeeRepoPG) GetByHostID(hostID uuid.UUID, limit, offset int) ([]mod
 		Limit(limit).Offset(offset).
 		Find(&attendees).Error
 	return attendees, err
+}
+
+func (a *attendeeRepoPG) GetHostAttendeesTotalCount(hostID uuid.UUID) (int64, error) {
+	var count int64
+	err := a.db.Model(&models.Attendee{}).
+		Joins("JOIN events ON attendees.event_id = events.id").
+		Where("events.host_id = ?", hostID).
+		Count(&count).Error
+	return count, err
 }
 
 func (a *attendeeRepoPG) Update(attendee *models.Attendee) error {
@@ -78,39 +97,39 @@ func (a *attendeeRepoPG) CheckInAttendee(attendeeID, checkedInBy uuid.UUID) erro
 
 func (a *attendeeRepoPG) GetEventAttendeeStats(eventID uuid.UUID) (map[string]int64, error) {
 	stats := make(map[string]int64)
-	
+
 	// Total attendees
 	var total int64
 	a.db.Model(&models.Attendee{}).Where("event_id = ?", eventID).Count(&total)
 	stats["total"] = total
-	
+
 	// Checked in
 	var checkedIn int64
 	a.db.Model(&models.Attendee{}).
 		Where("event_id = ? AND status = ?", eventID, models.AttendeeCheckedIn).
 		Count(&checkedIn)
 	stats["checked_in"] = checkedIn
-	
+
 	// Active (not checked in)
 	var active int64
 	a.db.Model(&models.Attendee{}).
 		Where("event_id = ? AND status = ?", eventID, models.AttendeeActive).
 		Count(&active)
 	stats["active"] = active
-	
+
 	// Cancelled
 	var cancelled int64
 	a.db.Model(&models.Attendee{}).
 		Where("event_id = ? AND status = ?", eventID, models.AttendeeCancelled).
 		Count(&cancelled)
 	stats["cancelled"] = cancelled
-	
+
 	return stats, nil
 }
 
 func (a *attendeeRepoPG) GetHostAttendeeStats(hostID uuid.UUID) (map[string]int64, error) {
 	stats := make(map[string]int64)
-	
+
 	// Total attendees across all host events
 	var total int64
 	a.db.Model(&models.Attendee{}).
@@ -118,7 +137,7 @@ func (a *attendeeRepoPG) GetHostAttendeeStats(hostID uuid.UUID) (map[string]int6
 		Where("events.host_id = ?", hostID).
 		Count(&total)
 	stats["total"] = total
-	
+
 	// Checked in
 	var checkedIn int64
 	a.db.Model(&models.Attendee{}).
@@ -126,7 +145,7 @@ func (a *attendeeRepoPG) GetHostAttendeeStats(hostID uuid.UUID) (map[string]int6
 		Where("events.host_id = ? AND attendees.status = ?", hostID, models.AttendeeCheckedIn).
 		Count(&checkedIn)
 	stats["checked_in"] = checkedIn
-	
+
 	// Active
 	var active int64
 	a.db.Model(&models.Attendee{}).
@@ -134,7 +153,7 @@ func (a *attendeeRepoPG) GetHostAttendeeStats(hostID uuid.UUID) (map[string]int6
 		Where("events.host_id = ? AND attendees.status = ?", hostID, models.AttendeeActive).
 		Count(&active)
 	stats["active"] = active
-	
+
 	// Cancelled
 	var cancelled int64
 	a.db.Model(&models.Attendee{}).
@@ -142,6 +161,6 @@ func (a *attendeeRepoPG) GetHostAttendeeStats(hostID uuid.UUID) (map[string]int6
 		Where("events.host_id = ? AND attendees.status = ?", hostID, models.AttendeeCancelled).
 		Count(&cancelled)
 	stats["cancelled"] = cancelled
-	
+
 	return stats, nil
 }

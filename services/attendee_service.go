@@ -11,29 +11,36 @@ import (
 type AttendeeService interface {
 	CreateAttendee(attendee *models.Attendee) error
 	GetAttendeeByID(id uuid.UUID) (*models.Attendee, error)
-	GetEventAttendees(eventID uuid.UUID, limit, offset int) ([]models.Attendee, error)
-	GetHostAttendees(hostID uuid.UUID, limit, offset int) ([]models.Attendee, error)
+	GetEventAttendees(eventID uuid.UUID, limit, offset int) ([]AttendeeResponse, error)
+	GetEventAttendeesTotalCount(eventID uuid.UUID) (int64, error)
+	GetHostAttendees(hostID uuid.UUID, limit, offset int) ([]AttendeeResponse, error)
+	GetHostAttendeesTotalCount(hostID uuid.UUID) (int64, error)
 	CheckInByQRCode(qrCode string, eventID, checkedInBy uuid.UUID) (*CheckInResult, error)
 	GetEventAttendeeStats(eventID uuid.UUID) (map[string]int64, error)
 	GetHostAttendeeStats(hostID uuid.UUID) (map[string]int64, error)
 }
 
 type CheckInResult struct {
-	Success   bool                `json:"success"`
-	Message   string              `json:"message"`
-	Attendee  *AttendeeResponse   `json:"attendee,omitempty"`
-	Timestamp time.Time           `json:"timestamp"`
+	Success   bool              `json:"success"`
+	Message   string            `json:"message"`
+	Attendee  *AttendeeResponse `json:"attendee,omitempty"`
+	Timestamp time.Time         `json:"timestamp"`
 }
 
 type AttendeeResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Email       string    `json:"email"`
-	Event       string    `json:"event"`
-	TicketType  string    `json:"ticketType"`
-	QRCode      string    `json:"qrCode"`
-	Status      string    `json:"status"`
-	CheckedInAt *time.Time `json:"checkedInAt,omitempty"`
+	ID           uuid.UUID  `json:"id"`
+	Name         string     `json:"name"`
+	Email        string     `json:"email"`
+	Phone        string     `json:"phone"`
+	EventID      string     `json:"event_id"`
+	EventTitle   string     `json:"event_title"`
+	TicketType   string     `json:"ticket_type"`
+	PurchaseDate string     `json:"purchase_date"`
+	Amount       float64    `json:"amount"`
+	Status       string     `json:"status"`
+	CheckInTime  *time.Time `json:"check_in_time,omitempty"`
+	CreatedAt    string     `json:"created_at"`
+	UpdatedAt    string     `json:"updated_at"`
 }
 
 type attendeeService struct {
@@ -56,12 +63,51 @@ func (s *attendeeService) GetAttendeeByID(id uuid.UUID) (*models.Attendee, error
 	return s.attendeeRepo.GetByID(id)
 }
 
-func (s *attendeeService) GetEventAttendees(eventID uuid.UUID, limit, offset int) ([]models.Attendee, error) {
-	return s.attendeeRepo.GetByEventID(eventID, limit, offset)
+func (s *attendeeService) GetEventAttendees(eventID uuid.UUID, limit, offset int) ([]AttendeeResponse, error) {
+	attendees, err := s.attendeeRepo.GetByEventID(eventID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	return s.transformAttendeesToResponse(attendees), nil
 }
 
-func (s *attendeeService) GetHostAttendees(hostID uuid.UUID, limit, offset int) ([]models.Attendee, error) {
-	return s.attendeeRepo.GetByHostID(hostID, limit, offset)
+func (s *attendeeService) GetEventAttendeesTotalCount(eventID uuid.UUID) (int64, error) {
+	return s.attendeeRepo.GetEventAttendeesTotalCount(eventID)
+}
+
+func (s *attendeeService) GetHostAttendees(hostID uuid.UUID, limit, offset int) ([]AttendeeResponse, error) {
+	attendees, err := s.attendeeRepo.GetByHostID(hostID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	return s.transformAttendeesToResponse(attendees), nil
+}
+
+func (s *attendeeService) GetHostAttendeesTotalCount(hostID uuid.UUID) (int64, error) {
+	return s.attendeeRepo.GetHostAttendeesTotalCount(hostID)
+}
+
+// Helper function to transform model attendees to response DTOs
+func (s *attendeeService) transformAttendeesToResponse(attendees []models.Attendee) []AttendeeResponse {
+	responses := make([]AttendeeResponse, len(attendees))
+	for i, attendee := range attendees {
+		responses[i] = AttendeeResponse{
+			ID:           attendee.ID,
+			Name:         attendee.User.Name,
+			Email:        attendee.User.Email,
+			Phone:        attendee.Ticket.AttendeePhone,
+			EventID:      attendee.EventID.String(),
+			EventTitle:   attendee.Event.Title,
+			TicketType:   attendee.Ticket.TicketType.Name,
+			PurchaseDate: attendee.Ticket.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			Amount:       attendee.Ticket.TicketType.Price,
+			Status:       string(attendee.Status),
+			CheckInTime:  attendee.CheckedInAt,
+			CreatedAt:    attendee.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:    attendee.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+	return responses
 }
 
 func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uuid.UUID) (*CheckInResult, error) {
@@ -109,17 +155,16 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 	// Check if already checked in
 	if targetAttendee.Status == models.AttendeeCheckedIn {
 		return &CheckInResult{
-			Success:   false,
-			Message:   "Already checked in",
+			Success: false,
+			Message: "Already checked in",
 			Attendee: &AttendeeResponse{
 				ID:          targetAttendee.ID,
 				Name:        targetAttendee.User.Name,
 				Email:       targetAttendee.User.Email,
-				Event:       targetAttendee.Event.Title,
+				EventTitle:  targetAttendee.Event.Title,
 				TicketType:  ticket.TicketType.Name,
-				QRCode:      ticket.QRCode,
 				Status:      string(targetAttendee.Status),
-				CheckedInAt: targetAttendee.CheckedInAt,
+				CheckInTime: targetAttendee.CheckedInAt,
 			},
 			Timestamp: time.Now(),
 		}, nil
@@ -128,15 +173,14 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 	// Check if cancelled
 	if targetAttendee.Status == models.AttendeeCancelled {
 		return &CheckInResult{
-			Success:   false,
-			Message:   "Ticket has been cancelled",
+			Success: false,
+			Message: "Ticket has been cancelled",
 			Attendee: &AttendeeResponse{
 				ID:         targetAttendee.ID,
 				Name:       targetAttendee.User.Name,
 				Email:      targetAttendee.User.Email,
-				Event:      targetAttendee.Event.Title,
+				EventTitle: targetAttendee.Event.Title,
 				TicketType: ticket.TicketType.Name,
-				QRCode:     ticket.QRCode,
 				Status:     string(targetAttendee.Status),
 			},
 			Timestamp: time.Now(),
@@ -162,11 +206,10 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 			ID:          updatedAttendee.ID,
 			Name:        updatedAttendee.User.Name,
 			Email:       updatedAttendee.User.Email,
-			Event:       updatedAttendee.Event.Title,
+			EventTitle:  updatedAttendee.Event.Title,
 			TicketType:  ticket.TicketType.Name,
-			QRCode:      ticket.QRCode,
 			Status:      string(updatedAttendee.Status),
-			CheckedInAt: updatedAttendee.CheckedInAt,
+			CheckInTime: updatedAttendee.CheckedInAt,
 		},
 		Timestamp: time.Now(),
 	}, nil

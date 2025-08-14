@@ -64,6 +64,13 @@ func (h *AttendeeHandler) GetEventAttendees(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get attendees"})
 	}
 
+	// Get total count for pagination
+	totalCount, err := h.attendeeService.GetEventAttendeesTotalCount(eventID)
+	if err != nil {
+		log.Printf("Failed to get total attendee count: %v", err)
+		totalCount = int64(len(attendees))
+	}
+
 	// Get stats
 	stats, err := h.attendeeService.GetEventAttendeeStats(eventID)
 	if err != nil {
@@ -72,12 +79,12 @@ func (h *AttendeeHandler) GetEventAttendees(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"attendees": attendees,
-		"stats":     stats,
-		"pagination": fiber.Map{
-			"page":  page,
-			"limit": limit,
-		},
+		"data":    attendees,
+		"total":   totalCount,
+		"page":    page,
+		"limit":   limit,
+		"hasMore": int64(offset+limit) < totalCount,
+		"stats":   stats,
 	})
 }
 
@@ -151,6 +158,13 @@ func (h *AttendeeHandler) GetHostAttendees(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get attendees"})
 	}
 
+	// Get total count for pagination
+	totalCount, err := h.attendeeService.GetHostAttendeesTotalCount(hostID)
+	if err != nil {
+		log.Printf("Failed to get total attendee count: %v", err)
+		totalCount = int64(len(attendees))
+	}
+
 	// Get stats
 	stats, err := h.attendeeService.GetHostAttendeeStats(hostID)
 	if err != nil {
@@ -159,11 +173,11 @@ func (h *AttendeeHandler) GetHostAttendees(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"attendees": attendees,
-		"stats":     stats,
-		"pagination": fiber.Map{
-			"page":  page,
-			"limit": limit,
-		},
+		"data":    attendees,
+		"total":   totalCount,
+		"page":    page,
+		"limit":   limit,
+		"hasMore": int64(offset+limit) < totalCount,
+		"stats":   stats,
 	})
 }

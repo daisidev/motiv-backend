@@ -1,9 +1,8 @@
-
 package services
 
 import (
 	"fmt"
-	
+
 	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/hidenkeys/motiv-backend/repository"
@@ -14,7 +13,7 @@ type TicketService interface {
 	CreateTicketWithQR(ticket *models.Ticket) error
 	GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error)
 	GetTicketByID(id uuid.UUID) (*models.Ticket, error)
-	
+
 	// Ticket Type methods
 	CreateTicketType(ticketType *models.TicketType) error
 	GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error)
@@ -23,11 +22,15 @@ type TicketService interface {
 }
 
 type ticketService struct {
-	ticketRepo repository.TicketRepository
+	ticketRepo   repository.TicketRepository
+	attendeeRepo repository.AttendeeRepository
 }
 
-func NewTicketService(ticketRepo repository.TicketRepository) TicketService {
-	return &ticketService{ticketRepo}
+func NewTicketService(ticketRepo repository.TicketRepository, attendeeRepo repository.AttendeeRepository) TicketService {
+	return &ticketService{
+		ticketRepo:   ticketRepo,
+		attendeeRepo: attendeeRepo,
+	}
 }
 
 func (s *ticketService) PurchaseTicket(ticket *models.Ticket) error {
@@ -52,15 +55,28 @@ func (s *ticketService) CreateTicketWithQR(ticket *models.Ticket) error {
 	if err != nil {
 		return fmt.Errorf("failed to create ticket: %w", err)
 	}
-	
+
 	// Now generate QR code data with the actual ticket ID
 	qrData := fmt.Sprintf("MOTIV-TICKET:%s:%s:%s", ticket.ID.String(), ticket.EventID.String(), ticket.UserID.String())
 	ticket.QRCode = qrData
-	
+
 	// Update the ticket with the QR code
 	err = s.ticketRepo.UpdateTicket(ticket)
 	if err != nil {
 		return fmt.Errorf("failed to update ticket with QR code: %w", err)
+	}
+
+	// Create corresponding attendee record
+	attendee := &models.Attendee{
+		EventID:  ticket.EventID,
+		UserID:   ticket.UserID,
+		TicketID: ticket.ID,
+		Status:   models.AttendeeActive,
+	}
+
+	err = s.attendeeRepo.Create(attendee)
+	if err != nil {
+		return fmt.Errorf("failed to create attendee record: %w", err)
 	}
 
 	return nil

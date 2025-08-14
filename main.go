@@ -40,7 +40,7 @@ func main() {
 	// Create services
 	userService := services.NewUserService(userRepo)
 	eventService := services.NewEventService(eventRepo)
-	ticketService := services.NewTicketService(ticketRepo)
+	ticketService := services.NewTicketService(ticketRepo, attendeeRepo)
 	wishlistService := services.NewWishlistService(wishlistRepo)
 	reviewService := services.NewReviewService(reviewRepo)
 	paymentService := services.NewPaymentService(paymentRepo, userRepo)
