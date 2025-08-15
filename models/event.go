@@ -25,6 +25,9 @@ type Event struct {
 	StartTime      string         `gorm:"not null" json:"start_time"`
 	EndTime        string         `gorm:"not null" json:"end_time"`
 	Location       string         `gorm:"not null" json:"location"`
+	Latitude       *float64       `json:"latitude,omitempty"`
+	Longitude      *float64       `json:"longitude,omitempty"`
+	PlaceID        *string        `json:"place_id,omitempty"`
 	Tags           pq.StringArray `gorm:"type:text[]" json:"tags"`
 	BannerImageURL string         `json:"banner_image_url"`
 	EventType      string         `gorm:"type:varchar(20);not null;default:'ticketed'" json:"event_type"` // "ticketed" or "free"

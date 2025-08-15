@@ -158,6 +158,15 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		Status:         status,
 	}
 
+	// Add location data if provided
+	if req.LocationData != nil {
+		newEvent.Latitude = &req.LocationData.Coordinates.Lat
+		newEvent.Longitude = &req.LocationData.Coordinates.Lng
+		if req.LocationData.PlaceID != nil {
+			newEvent.PlaceID = req.LocationData.PlaceID
+		}
+	}
+
 	// Create ticket types slice for possible ticketed event
 	var ticketTypes []models.TicketType
 	if req.EventType == "ticketed" {
@@ -271,6 +280,16 @@ func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 	if req.Location != "" {
 		event.Location = req.Location
 	}
+	
+	// Update location data if provided
+	if req.LocationData != nil {
+		event.Latitude = &req.LocationData.Coordinates.Lat
+		event.Longitude = &req.LocationData.Coordinates.Lng
+		if req.LocationData.PlaceID != nil {
+			event.PlaceID = req.LocationData.PlaceID
+		}
+	}
+	
 	if req.Tags != nil {
 		event.Tags = req.Tags
 	}

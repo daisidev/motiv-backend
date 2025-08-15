@@ -109,7 +109,7 @@ func (r *eventRepoPG) UpdateEvent(event *models.Event) error {
 	// Use Select to only update specific fields, avoiding issues with host_id
 	return r.db.Model(event).Select(
 		"title", "description", "start_date", "start_time", "end_time", 
-		"location", "tags", "banner_image_url", "event_type", "status", "updated_at",
+		"location", "latitude", "longitude", "place_id", "tags", "banner_image_url", "event_type", "status", "updated_at",
 	).Updates(event).Error
 }
 

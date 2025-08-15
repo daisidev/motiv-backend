@@ -215,6 +215,40 @@ func (h *UserHandler) CheckWishlistStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"is_in_wishlist": isInWishlist})
 }
 
+// GetMyTicket handles retrieving a specific ticket by ID for the current user
+func (h *UserHandler) GetMyTicket(c *fiber.Ctx) error {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	// Get ticket ID from URL parameter
+	ticketIDStr := c.Params("id")
+	if ticketIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ticket ID is required"})
+	}
+
+	ticketID, err := uuid.Parse(ticketIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ticket ID"})
+	}
+
+	// Get the ticket and verify it belongs to the user
+	ticket, err := h.ticketService.GetTicketByID(ticketID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Ticket not found"})
+	}
+
+	// Verify the ticket belongs to the current user
+	if ticket.UserID != userID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	return c.JSON(ticket)
+}
+
 // GetMyTicketsDebug handles debugging ticket data issues
 func (h *UserHandler) GetMyTicketsDebug(c *fiber.Ctx) error {
 	user := c.Locals("user").(*jwt.Token)

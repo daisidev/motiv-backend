@@ -20,7 +20,8 @@ type CreateEventRequest struct {
 	EndTime   string `json:"endTime" validate:"required"`
 
 	// Location
-	Location string `json:"location" validate:"required"`
+	Location    string                 `json:"location" validate:"required"`
+	LocationData *LocationDataRequest `json:"locationData,omitempty"`
 
 	// Tags
 	Tags []string `json:"tags"`
@@ -30,6 +31,19 @@ type CreateEventRequest struct {
 
 	// Tickets (only for ticketed events)
 	TicketTypes []CreateTicketTypeRequest `json:"ticketTypes"`
+}
+
+// LocationDataRequest represents location data with coordinates
+type LocationDataRequest struct {
+	Address     string              `json:"address" validate:"required"`
+	Coordinates CoordinatesRequest  `json:"coordinates" validate:"required"`
+	PlaceID     *string             `json:"placeId,omitempty"`
+}
+
+// CoordinatesRequest represents latitude and longitude
+type CoordinatesRequest struct {
+	Lat float64 `json:"lat" validate:"required"`
+	Lng float64 `json:"lng" validate:"required"`
 }
 
 // CreateTicketTypeRequest represents a ticket type in the creation request
@@ -49,6 +63,9 @@ type EventResponse struct {
 	StartTime      string               `json:"start_time"`
 	EndTime        string               `json:"end_time"`
 	Location       string               `json:"location"`
+	Latitude       *float64             `json:"latitude,omitempty"`
+	Longitude      *float64             `json:"longitude,omitempty"`
+	PlaceID        *string              `json:"place_id,omitempty"`
 	Tags           []string             `json:"tags"`
 	BannerImageURL string               `json:"banner_image_url"`
 	EventType      string               `json:"event_type"`

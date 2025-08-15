@@ -97,6 +97,7 @@ func main() {
 	user.Get("/me", userHandler.GetMe)
 	user.Put("/me", userHandler.UpdateMe)
 	user.Get("/me/tickets", userHandler.GetMyTickets)
+	user.Get("/me/tickets/:id", userHandler.GetMyTicket)
 	user.Get("/me/tickets/debug", userHandler.GetMyTicketsDebug)
 	user.Get("/me/wishlist", userHandler.GetMyWishlist)
 	user.Get("/me/wishlist/check", userHandler.CheckWishlistStatus)
