@@ -25,6 +25,8 @@ paths:
                     type: string
                   version:
                     type: string
+
+  # Authentication endpoints
   /auth/signup:
     post:
       summary: User signup
@@ -33,14 +35,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewUser'
+              $ref: '#/components/schemas/SignupRequest'
       responses:
         '201':
           description: User created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Bad request - validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/login:
     post:
       summary: User login
@@ -56,8 +70,103 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
+  /auth/google:
+    post:
+      summary: Google OAuth authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleAuthRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  isNewUser:
+                    type: boolean
+        '201':
+          description: New user created and logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+                  isNewUser:
+                    type: boolean
+
+  /auth/forgot-password:
+    post:
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Password reset email sent (if account exists)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /auth/reset-password:
+    post:
+      summary: Reset password with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # User endpoints
   /users/me:
     get:
       summary: Get current user's profile
@@ -69,7 +178,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserResponse'
     put:
       summary: Update current user's profile
       security:
@@ -79,14 +188,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateUser'
+              $ref: '#/components/schemas/UpdateUserRequest'
       responses:
         '200':
           description: User updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserResponse'
 
   /users/me/tickets:
     get:
@@ -101,7 +210,40 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Ticket'
+                  $ref: '#/components/schemas/TicketResponse'
+
+  /users/me/tickets/{id}:
+    get:
+      summary: Get specific ticket for the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponse'
+
+  /users/me/tickets/debug:
+    get:
+      summary: Debug endpoint for user tickets
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Debug information for tickets
+          content:
+            application/json:
+              schema:
+                type: object
 
   /users/me/wishlist:
     get:
@@ -116,7 +258,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Event'
+                  $ref: '#/components/schemas/EventResponse'
     post:
       summary: Add an event to the wishlist
       security:
@@ -130,22 +272,141 @@ paths:
               properties:
                 eventId:
                   type: string
+                  format: uuid
       responses:
         '200':
           description: Event added to wishlist
-
-  /events:
-    get:
-      summary: List all events
+    delete:
+      summary: Remove an event from the wishlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                eventId:
+                  type: string
+                  format: uuid
       responses:
         '200':
-          description: A list of events
+          description: Event removed from wishlist
+
+  /users/me/wishlist/check:
+    get:
+      summary: Check if event is in user's wishlist
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Wishlist status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inWishlist:
+                    type: boolean
+
+  # Event endpoints
+  /events:
+    get:
+      summary: List all events with pagination and filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+            maximum: 100
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search term for event title or description
+        - name: tags
+          in: query
+          schema:
+            type: string
+          description: Comma-separated list of tags
+        - name: location
+          in: query
+          schema:
+            type: string
+          description: Location filter
+        - name: event_type
+          in: query
+          schema:
+            type: string
+            enum: [free, ticketed]
+          description: Filter by event type
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter events from this date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter events until this date
+      responses:
+        '200':
+          description: Paginated list of events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventResponse'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  hasMore:
+                    type: boolean
+
+  /events/suggestions:
+    get:
+      summary: Get search suggestions
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          description: Query string for suggestions
+      responses:
+        '200':
+          description: List of search suggestions
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Event'
+                  type: string
 
   /events/{id}:
     get:
@@ -156,13 +417,20 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Event details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Event'
+                $ref: '#/components/schemas/EventResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /events/{id}/reviews:
     get:
@@ -173,6 +441,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: A list of reviews
@@ -181,7 +450,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Review'
+                  $ref: '#/components/schemas/ReviewResponse'
 
   /events/{id}/analytics:
     get:
@@ -192,6 +461,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Event analytics
@@ -209,6 +479,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Event revenue
@@ -217,8 +488,11 @@ paths:
               schema:
                 type: object
                 properties:
-                  totalRevenue:
-                    type: number
+                  data:
+                    type: object
+                    properties:
+                      revenue:
+                        type: number
 
   /events/{id}/view:
     post:
@@ -229,10 +503,12 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Event view recorded
 
+  # Host endpoints
   /hosts/me/events:
     get:
       summary: Get events created by the logged-in host
@@ -246,7 +522,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Event'
+                  $ref: '#/components/schemas/EventResponse'
     post:
       summary: Create a new event
       security:
@@ -256,14 +532,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewEvent'
+              $ref: '#/components/schemas/CreateEventRequest'
       responses:
         '201':
           description: Event created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Event'
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          description: Bad request - validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /hosts/me/events/{id}:
     put:
@@ -276,19 +558,32 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateEvent'
+              $ref: '#/components/schemas/CreateEventRequest'
       responses:
         '200':
           description: Event updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Event'
+                $ref: '#/components/schemas/EventResponse'
+        '403':
+          description: Not authorized to update this event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: Delete an event
       security:
@@ -299,9 +594,22 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '204':
           description: Event deleted successfully
+        '403':
+          description: Not authorized to delete this event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /hosts/me/analytics/dashboard:
     get:
@@ -349,7 +657,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Review'
+                  $ref: '#/components/schemas/ReviewResponse'
 
   /hosts/me/payments/earnings:
     get:
@@ -364,27 +672,37 @@ paths:
               schema:
                 type: object
                 properties:
-                  totalEarnings:
-                    type: number
-                  pendingPayout:
-                    type: number
-                  lastPayout:
-                    type: number
+                  data:
+                    $ref: '#/components/schemas/HostEarnings'
 
   /hosts/me/payments/payouts:
     get:
       summary: Get payouts for the logged-in host
       security:
         - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
       responses:
         '200':
           description: A list of payouts
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Payout'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payout'
 
   /hosts/me/payments/pending:
     get:
@@ -397,10 +715,170 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Payout'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payout'
 
+  # Host attendee management
+  /hosts/me/attendees:
+    get:
+      summary: Get all attendees for host's events
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: event_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by specific event
+        - name: ticket_type
+          in: query
+          schema:
+            type: string
+          description: Filter by ticket type
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, checked_in, cancelled]
+          description: Filter by attendee status
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or email
+      responses:
+        '200':
+          description: Paginated list of attendees
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendeeListResponse'
+
+  /hosts/me/attendees/export:
+    get:
+      summary: Export attendees to CSV
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: event_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: ticket_type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV file with attendee data
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  /hosts/me/events/{eventId}/attendees:
+    get:
+      summary: Get attendees for a specific event
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated list of event attendees
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendeeListResponse'
+        '403':
+          description: Not authorized to view attendees for this event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hosts/me/attendees/checkin:
+    post:
+      summary: Check in an attendee via QR code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qrCode:
+                  type: string
+                eventId:
+                  type: string
+                  format: uuid
+              required:
+                - qrCode
+                - eventId
+      responses:
+        '200':
+          description: Attendee checked in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  attendee:
+                    $ref: '#/components/schemas/AttendeeResponse'
+        '400':
+          description: Invalid QR code or already checked in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Review endpoints
   /reviews:
     post:
       summary: Create a new review
@@ -411,14 +889,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewReview'
+              $ref: '#/components/schemas/CreateReviewRequest'
       responses:
         '201':
           description: Review created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Review'
+                $ref: '#/components/schemas/ReviewResponse'
 
   /reviews/{id}:
     put:
@@ -431,19 +909,20 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateReview'
+              $ref: '#/components/schemas/UpdateReviewRequest'
       responses:
         '200':
           description: Review updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Review'
+                $ref: '#/components/schemas/ReviewResponse'
     delete:
       summary: Delete a review
       security:
@@ -454,6 +933,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '204':
           description: Review deleted successfully
@@ -469,13 +949,104 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Review marked as helpful
 
+  # Payment endpoints
+  /payments/initiate:
+    post:
+      summary: Initiate payment for ticket purchase
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentInitiationRequest'
+      responses:
+        '200':
+          description: Payment initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitiationResponse'
+        '400':
+          description: Bad request - validation errors or insufficient tickets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payments/webhook:
+    post:
+      summary: Payment webhook from Paystack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaystackWebhookEvent'
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /payments/simulate-success:
+    post:
+      summary: Simulate successful payment (for testing)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reference:
+                  type: string
+                eventId:
+                  type: string
+                  format: uuid
+                attendeeData:
+                  $ref: '#/components/schemas/AttendeeDataRequest'
+                attendees:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AttendeeDataRequest'
+                ticketDetails:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TicketDetailRequest'
+              required:
+                - reference
+                - eventId
+                - attendeeData
+                - ticketDetails
+      responses:
+        '200':
+          description: Payment simulated and tickets created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # Ticket endpoints
   /tickets/purchase:
     post:
-      summary: Purchase a ticket
+      summary: Purchase a ticket (legacy endpoint)
       security:
         - bearerAuth: []
       requestBody:
@@ -490,20 +1061,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Ticket'
+                $ref: '#/components/schemas/TicketResponse'
 
-  /payments/webhook:
+  /tickets/rsvp:
     post:
-      summary: Payment webhook
+      summary: RSVP for a free event
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                eventId:
+                  type: string
+                  format: uuid
+                attendeeData:
+                  $ref: '#/components/schemas/AttendeeDataRequest'
+              required:
+                - eventId
+                - attendeeData
       responses:
-        '200':
-          description: Webhook received
+        '201':
+          description: RSVP successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponse'
 
 components:
   securitySchemes:
@@ -513,13 +1099,23 @@ components:
       bearerFormat: JWT
 
   schemas:
-    User:
+    # Error Response
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+    # User Schemas
+    UserResponse:
       type: object
       properties:
         id:
           type: string
           format: uuid
         name:
+          type: string
+        username:
           type: string
         email:
           type: string
@@ -530,21 +1126,80 @@ components:
           type: string
           enum: [guest, host, admin, superhost]
 
-    NewUser:
+    SignupRequest:
       type: object
+      required:
+        - name
+        - username
+        - email
+        - password
+        - confirmPassword
       properties:
         name:
           type: string
+          minLength: 2
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
         email:
           type: string
           format: email
         password:
           type: string
+          minLength: 6
+        confirmPassword:
+          type: string
         role:
           type: string
           enum: [guest, host]
+          default: guest
 
-    UpdateUser:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    GoogleAuthRequest:
+      type: object
+      required:
+        - idToken
+      properties:
+        idToken:
+          type: string
+
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required:
+        - token
+        - newPassword
+        - confirmPassword
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          minLength: 6
+        confirmPassword:
+          type: string
+
+    UpdateUserRequest:
       type: object
       properties:
         name:
@@ -552,22 +1207,8 @@ components:
         avatar:
           type: string
 
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-
-    Event:
+    # Event Schemas
+    EventResponse:
       type: object
       properties:
         id:
@@ -577,96 +1218,144 @@ components:
           type: string
         description:
           type: string
-        startDate:
+        start_date:
           type: string
           format: date-time
-        startTime:
+        start_time:
           type: string
-        endTime:
+        end_time:
           type: string
         location:
+          type: string
+        manual_description:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        place_id:
           type: string
         tags:
           type: array
           items:
             type: string
-        bannerImageURL:
+        banner_image_url:
           type: string
-        hostId:
+        event_type:
+          type: string
+          enum: [ticketed, free]
+        host_id:
           type: string
           format: uuid
+        host:
+          $ref: '#/components/schemas/UserResponse'
+        ticket_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketTypeResponse'
         status:
           type: string
           enum: [draft, active, cancelled]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
-    NewEvent:
+    CreateEventRequest:
       type: object
+      required:
+        - title
+        - eventType
+        - startDate
+        - startTime
+        - endTime
+        - location
       properties:
         title:
           type: string
         description:
           type: string
-        startDate:
+        eventType:
           type: string
-          format: date-time
-        startTime:
-          type: string
-        endTime:
-          type: string
-        location:
-          type: string
-        tags:
-          type: array
-          items:
-            type: string
-        bannerImageURL:
-          type: string
-
-    UpdateEvent:
-      type: object
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        startDate:
-          type: string
-          format: date-time
-        startTime:
-          type: string
-        endTime:
-          type: string
-        location:
-          type: string
-        tags:
-          type: array
-          items:
-            type: string
-        bannerImageURL:
-          type: string
+          enum: [ticketed, free]
         status:
           type: string
           enum: [draft, active, cancelled]
+          default: active
+        startDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+        endTime:
+          type: string
+        location:
+          type: string
+        locationData:
+          $ref: '#/components/schemas/LocationDataRequest'
+        tags:
+          type: array
+          items:
+            type: string
+        bannerImageURL:
+          type: string
+        ticketTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateTicketTypeRequest'
 
-    Ticket:
+    LocationDataRequest:
       type: object
+      required:
+        - address
+        - coordinates
       properties:
-        id:
+        address:
           type: string
-          format: uuid
-        eventId:
+        manualDescription:
           type: string
-          format: uuid
-        userId:
-          type: string
-          format: uuid
-        ticketTypeId:
-          type: string
-          format: uuid
-        qrCode:
+        coordinates:
+          $ref: '#/components/schemas/CoordinatesRequest'
+        placeId:
           type: string
 
-    TicketType:
+    CoordinatesRequest:
+      type: object
+      required:
+        - lat
+        - lng
+      properties:
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+
+    CreateTicketTypeRequest:
+      type: object
+      required:
+        - name
+        - price
+        - totalQuantity
+      properties:
+        name:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        description:
+          type: string
+        totalQuantity:
+          type: integer
+          minimum: 1
+
+    # Ticket Schemas
+    TicketTypeResponse:
       type: object
       properties:
         id:
@@ -679,19 +1368,168 @@ components:
           type: string
         price:
           type: number
-        quantity:
+        description:
+          type: string
+        total_quantity:
           type: integer
+        sold_quantity:
+          type: integer
+        available_quantity:
+          type: integer
+
+    TicketResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        event:
+          $ref: '#/components/schemas/EventResponse'
+        ticketTypeId:
+          type: string
+          format: uuid
+        ticketType:
+          $ref: '#/components/schemas/TicketTypeResponse'
+        qrCode:
+          type: string
+        attendeeData:
+          $ref: '#/components/schemas/AttendeeDataRequest'
+        purchasedAt:
+          type: string
+          format: date-time
 
     PurchaseTicketRequest:
       type: object
+      required:
+        - ticketTypeId
+        - quantity
       properties:
         ticketTypeId:
           type: string
           format: uuid
         quantity:
           type: integer
+          minimum: 1
 
-    Review:
+    # Payment Schemas
+    PaymentInitiationRequest:
+      type: object
+      required:
+        - eventId
+        - email
+        - attendeeData
+        - ticketDetails
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        attendeeData:
+          $ref: '#/components/schemas/AttendeeDataRequest'
+        attendees:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendeeDataRequest'
+        ticketDetails:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TicketDetailRequest'
+
+    AttendeeDataRequest:
+      type: object
+      required:
+        - fullName
+        - email
+        - phone
+      properties:
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+
+    TicketDetailRequest:
+      type: object
+      required:
+        - ticketTypeId
+        - ticketTypeName
+        - quantity
+        - price
+      properties:
+        ticketTypeId:
+          type: string
+          format: uuid
+        ticketTypeName:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        price:
+          type: number
+          minimum: 0
+
+    PaymentInitiationResponse:
+      type: object
+      properties:
+        reference:
+          type: string
+        amount:
+          type: integer
+          description: Amount in kobo
+        paystackUrl:
+          type: string
+        publicKey:
+          type: string
+        email:
+          type: string
+        currency:
+          type: string
+
+    PaystackWebhookEvent:
+      type: object
+      properties:
+        event:
+          type: string
+        data:
+          type: object
+          properties:
+            reference:
+              type: string
+            amount:
+              type: integer
+            currency:
+              type: string
+            status:
+              type: string
+            message:
+              type: string
+            customer:
+              type: object
+              properties:
+                email:
+                  type: string
+            metadata:
+              type: object
+              properties:
+                eventId:
+                  type: string
+                attendeeData:
+                  $ref: '#/components/schemas/AttendeeDataRequest'
+                ticketDetails:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TicketDetailRequest'
+
+    # Review Schemas
+    ReviewResponse:
       type: object
       properties:
         id:
@@ -703,59 +1541,98 @@ components:
         userId:
           type: string
           format: uuid
+        user:
+          $ref: '#/components/schemas/UserResponse'
         rating:
           type: integer
+          minimum: 1
+          maximum: 5
         comment:
           type: string
         helpful:
           type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
-    NewReview:
+    CreateReviewRequest:
       type: object
+      required:
+        - eventId
+        - rating
       properties:
         eventId:
           type: string
           format: uuid
         rating:
           type: integer
+          minimum: 1
+          maximum: 5
         comment:
           type: string
 
-    UpdateReview:
+    UpdateReviewRequest:
       type: object
       properties:
         rating:
           type: integer
+          minimum: 1
+          maximum: 5
         comment:
           type: string
 
-    Payment:
+    # Attendee Schemas
+    AttendeeResponse:
       type: object
       properties:
         id:
           type: string
           format: uuid
-        ticketId:
+        name:
           type: string
-          format: uuid
+        email:
+          type: string
+        phone:
+          type: string
+        eventTitle:
+          type: string
+        ticketType:
+          type: string
+        purchaseDate:
+          type: string
         amount:
           type: number
-        currency:
-          type: string
         status:
           type: string
-          enum: [pending, completed, failed, refunded]
-        method:
-          type: string
-          enum: [bank_transfer, card, wallet]
-        reference:
-          type: string
-        processedAt:
+          enum: [pending, confirmed, checked_in, cancelled]
+        checkInTime:
           type: string
           format: date-time
-        failureReason:
-          type: string
 
+    AttendeeListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendeeResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        hasMore:
+          type: boolean
+        stats:
+          type: object
+          additionalProperties:
+            type: integer
+
+    # Payment & Payout Schemas
     Payout:
       type: object
       properties:
@@ -787,6 +1664,17 @@ components:
           type: string
           format: date-time
 
+    HostEarnings:
+      type: object
+      properties:
+        totalEarnings:
+          type: number
+        pendingPayout:
+          type: number
+        lastPayout:
+          type: number
+
+    # Analytics Schemas
     EventAnalytics:
       type: object
       properties:
