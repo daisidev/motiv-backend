@@ -46,7 +46,19 @@ func main() {
 	paymentService := services.NewPaymentService(paymentRepo, userRepo)
 	analyticsService := services.NewAnalyticsService(analyticsRepo, paymentRepo, attendeeRepo, reviewRepo)
 	attendeeService := services.NewAttendeeService(attendeeRepo, ticketRepo)
-	emailService := services.NewBrevoEmailService()
+
+	// Choose email service based on configuration
+	var emailService services.EmailService
+	brevoAPIKey := os.Getenv("BREVO_API_KEY")
+	brevoSenderEmail := os.Getenv("BREVO_SENDER_EMAIL")
+
+	if brevoAPIKey != "" && brevoSenderEmail != "" && brevoSenderEmail != "your-verified-email@yourdomain.com" {
+		log.Println("Using Brevo email service")
+		emailService = services.NewBrevoEmailService()
+	} else {
+		log.Println("Using mock email service (check BREVO_API_KEY and BREVO_SENDER_EMAIL)")
+		emailService = services.NewMockEmailService()
+	}
 
 	// Create handlers
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))

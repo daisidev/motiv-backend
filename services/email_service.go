@@ -146,6 +146,11 @@ func (e *BrevoEmailService) sendEmail(emailRequest BrevoEmailRequest) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
+		// Read response body for error details
+		bodyBytes, _ := json.Marshal(emailRequest)
+		fmt.Printf("Email request body: %s\n", string(bodyBytes))
+		fmt.Printf("API Key configured: %t\n", e.apiKey != "")
+		fmt.Printf("Sender email: %s\n", os.Getenv("BREVO_SENDER_EMAIL"))
 		return fmt.Errorf("email API returned status: %d", resp.StatusCode)
 	}
 
