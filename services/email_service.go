@@ -195,6 +195,12 @@ func (e *BrevoEmailService) generateTicketConfirmationContent(ticket *models.Tic
             {{if .Event.Description}}
             <p><strong>Description:</strong> {{.Event.Description}}</p>
             {{end}}
+            {{if .Event.ManualDescription}}
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin: 10px 0;">
+                <p><strong>⚠️ Important Information:</strong></p>
+                <p style="margin: 5px 0;">{{.Event.ManualDescription}}</p>
+            </div>
+            {{end}}
         </div>
         
         <div class="ticket-info">
@@ -244,6 +250,11 @@ Date: {{.Event.StartDate.Format "Monday, January 2, 2006"}}
 Time: {{.Event.StartTime}} - {{.Event.EndTime}}
 Location: {{.Event.Location}}
 {{if .Event.Description}}Description: {{.Event.Description}}{{end}}
+{{if .Event.ManualDescription}}
+
+⚠️ IMPORTANT INFORMATION:
+{{.Event.ManualDescription}}
+{{end}}
 
 TICKET INFORMATION
 Ticket ID: {{.Ticket.ID}}
