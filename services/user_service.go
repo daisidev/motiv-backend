@@ -2,6 +2,8 @@
 package services
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/hidenkeys/motiv-backend/repository"
@@ -15,6 +17,10 @@ type UserService interface {
 	GetUserByUsername(username string) (*models.User, error)
 	GetUserByID(id uuid.UUID) (*models.User, error)
 	UpdateUser(user *models.User) error
+	CreatePasswordResetToken(userID uuid.UUID, token string, expiresAt time.Time) error
+	GetPasswordResetToken(token string) (*models.PasswordResetToken, error)
+	MarkPasswordResetTokenAsUsed(tokenID uuid.UUID) error
+	UpdateUserPassword(userID uuid.UUID, newPassword string) error
 }
 
 type userService struct {
@@ -62,4 +68,30 @@ func (s *userService) GetUserByID(id uuid.UUID) (*models.User, error) {
 
 func (s *userService) UpdateUser(user *models.User) error {
 	return s.userRepo.UpdateUser(user)
+}
+
+func (s *userService) CreatePasswordResetToken(userID uuid.UUID, token string, expiresAt time.Time) error {
+	resetToken := &models.PasswordResetToken{
+		UserID:    userID,
+		Token:     token,
+		ExpiresAt: expiresAt,
+		Used:      false,
+	}
+	return s.userRepo.CreatePasswordResetToken(resetToken)
+}
+
+func (s *userService) GetPasswordResetToken(token string) (*models.PasswordResetToken, error) {
+	return s.userRepo.GetPasswordResetToken(token)
+}
+
+func (s *userService) MarkPasswordResetTokenAsUsed(tokenID uuid.UUID) error {
+	return s.userRepo.MarkPasswordResetTokenAsUsed(tokenID)
+}
+
+func (s *userService) UpdateUserPassword(userID uuid.UUID, newPassword string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	return s.userRepo.UpdateUserPassword(userID, string(hashedPassword))
 }

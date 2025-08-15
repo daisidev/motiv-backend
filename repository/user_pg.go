@@ -49,3 +49,24 @@ func (r *userRepoPG) GetUserByID(id uuid.UUID) (*models.User, error) {
 func (r *userRepoPG) UpdateUser(user *models.User) error {
 	return r.db.Save(user).Error
 }
+
+func (r *userRepoPG) CreatePasswordResetToken(token *models.PasswordResetToken) error {
+	return r.db.Create(token).Error
+}
+
+func (r *userRepoPG) GetPasswordResetToken(token string) (*models.PasswordResetToken, error) {
+	var resetToken models.PasswordResetToken
+	err := r.db.Preload("User").Where("token = ? AND used = ? AND expires_at > NOW()", token, false).First(&resetToken).Error
+	if err != nil {
+		return nil, err
+	}
+	return &resetToken, nil
+}
+
+func (r *userRepoPG) MarkPasswordResetTokenAsUsed(tokenID uuid.UUID) error {
+	return r.db.Model(&models.PasswordResetToken{}).Where("id = ?", tokenID).Update("used", true).Error
+}
+
+func (r *userRepoPG) UpdateUserPassword(userID uuid.UUID, hashedPassword string) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("password", hashedPassword).Error
+}

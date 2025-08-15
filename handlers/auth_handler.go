@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -17,10 +19,11 @@ import (
 type AuthHandler struct {
 	userService     services.UserService
 	firebaseService *services.FirebaseService
+	emailService    services.EmailService
 	jwtSecret       []byte
 }
 
-func NewAuthHandler(userService services.UserService, jwtSecret []byte) *AuthHandler {
+func NewAuthHandler(userService services.UserService, emailService services.EmailService, jwtSecret []byte) *AuthHandler {
 	firebaseService, err := services.NewFirebaseService()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize Firebase service: %v", err))
@@ -29,6 +32,7 @@ func NewAuthHandler(userService services.UserService, jwtSecret []byte) *AuthHan
 	return &AuthHandler{
 		userService:     userService,
 		firebaseService: firebaseService,
+		emailService:    emailService,
 		jwtSecret:       jwtSecret,
 	}
 }
@@ -334,5 +338,115 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 		"token":     t,
 		"user":      userResponse,
 		"isNewUser": true,
+	})
+}
+
+// ForgotPassword handles forgot password requests
+func (h *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
+	var forgotReq models.ForgotPasswordRequest
+	if err := c.BodyParser(&forgotReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	// Validate required fields
+	if forgotReq.Email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email is required"})
+	}
+
+	// Validate email format
+	if !isValidEmail(forgotReq.Email) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid email format"})
+	}
+
+	// Check if user exists
+	user, err := h.userService.GetUserByEmail(forgotReq.Email)
+	if err != nil {
+		// Don't reveal if email exists or not for security
+		return c.JSON(fiber.Map{
+			"message": "If an account with that email exists, we've sent a password reset link",
+		})
+	}
+
+	// Generate secure random token
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate reset token"})
+	}
+	resetToken := hex.EncodeToString(tokenBytes)
+
+	// Set expiration time (1 hour from now)
+	expiresAt := time.Now().Add(time.Hour)
+
+	// Save reset token to database
+	if err := h.userService.CreatePasswordResetToken(user.ID, resetToken, expiresAt); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create reset token"})
+	}
+
+	// Send password reset email
+	if err := h.emailService.SendPasswordResetEmail(user, resetToken); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to send reset email"})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "If an account with that email exists, we've sent a password reset link",
+	})
+}
+
+// ResetPassword handles password reset with token
+func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	var resetReq models.ResetPasswordRequest
+	if err := c.BodyParser(&resetReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	// Validate required fields
+	if resetReq.Token == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Reset token is required"})
+	}
+	if resetReq.NewPassword == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "New password is required"})
+	}
+	if resetReq.ConfirmPassword == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Password confirmation is required"})
+	}
+
+	// Validate password length
+	if len(resetReq.NewPassword) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Password must be at least 6 characters long"})
+	}
+
+	// Validate password confirmation
+	if resetReq.NewPassword != resetReq.ConfirmPassword {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Passwords do not match"})
+	}
+
+	// Get and validate reset token
+	resetToken, err := h.userService.GetPasswordResetToken(resetReq.Token)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid or expired reset token"})
+	}
+
+	// Check if token is expired
+	if time.Now().After(resetToken.ExpiresAt) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Reset token has expired"})
+	}
+
+	// Check if token is already used
+	if resetToken.Used {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Reset token has already been used"})
+	}
+
+	// Update user password
+	if err := h.userService.UpdateUserPassword(resetToken.UserID, resetReq.NewPassword); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update password"})
+	}
+
+	// Mark token as used
+	if err := h.userService.MarkPasswordResetTokenAsUsed(resetToken.ID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to mark token as used"})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Password has been reset successfully",
 	})
 }

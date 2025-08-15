@@ -12,4 +12,8 @@ type UserRepository interface {
 	GetUserByUsername(username string) (*models.User, error)
 	GetUserByID(id uuid.UUID) (*models.User, error)
 	UpdateUser(user *models.User) error
+	CreatePasswordResetToken(token *models.PasswordResetToken) error
+	GetPasswordResetToken(token string) (*models.PasswordResetToken, error)
+	MarkPasswordResetTokenAsUsed(tokenID uuid.UUID) error
+	UpdateUserPassword(userID uuid.UUID, hashedPassword string) error
 }

@@ -50,7 +50,7 @@ func main() {
 
 	// Create handlers
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	authHandler := handlers.NewAuthHandler(userService, jwtSecret)
+	authHandler := handlers.NewAuthHandler(userService, emailService, jwtSecret)
 	userHandler := handlers.NewUserHandler(userService, wishlistService, ticketService)
 	eventHandler := handlers.NewEventHandler(eventService, ticketService)
 	ticketHandler := handlers.NewTicketHandler(ticketService, eventService, userService, emailService)
@@ -88,6 +88,8 @@ func main() {
 	auth.Post("/signup", authHandler.Signup)
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/google", authHandler.GoogleAuth)
+	auth.Post("/forgot-password", authHandler.ForgotPassword)
+	auth.Post("/reset-password", authHandler.ResetPassword)
 
 	// User routes
 	user := api.Group("/users")

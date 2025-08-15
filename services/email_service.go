@@ -14,6 +14,7 @@ import (
 type EmailService interface {
 	SendTicketConfirmation(ticket *models.Ticket, event *models.Event, user *models.User) error
 	SendHostNotification(ticket *models.Ticket, event *models.Event, user *models.User, host *models.User) error
+	SendPasswordResetEmail(user *models.User, resetToken string) error
 }
 
 type BrevoEmailService struct {
@@ -85,6 +86,33 @@ func (e *BrevoEmailService) SendHostNotification(ticket *models.Ticket, event *m
 			{
 				Name:  host.Name,
 				Email: host.Email,
+			},
+		},
+		Subject:     subject,
+		HtmlContent: htmlContent,
+		TextContent: textContent,
+	}
+
+	return e.sendEmail(emailRequest)
+}
+
+func (e *BrevoEmailService) SendPasswordResetEmail(user *models.User, resetToken string) error {
+	subject := "Reset Your Password - Motiv Events"
+
+	htmlContent, textContent, err := e.generatePasswordResetContent(user, resetToken)
+	if err != nil {
+		return fmt.Errorf("failed to generate email content: %w", err)
+	}
+
+	emailRequest := BrevoEmailRequest{
+		Sender: EmailContact{
+			Name:  "Motiv Events",
+			Email: os.Getenv("BREVO_SENDER_EMAIL"),
+		},
+		To: []EmailContact{
+			{
+				Name:  user.Name,
+				Email: user.Email,
 			},
 		},
 		Subject:     subject,
@@ -361,6 +389,118 @@ Keep up the great work! Your event is gaining traction.
 		User:   user,
 		Host:   host,
 		AppURL: os.Getenv("FRONTEND_URL"),
+	}
+
+	// Generate HTML content
+	htmlTmpl, err := template.New("html").Parse(htmlTemplate)
+	if err != nil {
+		return "", "", err
+	}
+	var htmlBuf bytes.Buffer
+	if err := htmlTmpl.Execute(&htmlBuf, data); err != nil {
+		return "", "", err
+	}
+
+	// Generate text content
+	textTmpl, err := template.New("text").Parse(textTemplate)
+	if err != nil {
+		return "", "", err
+	}
+	var textBuf bytes.Buffer
+	if err := textTmpl.Execute(&textBuf, data); err != nil {
+		return "", "", err
+	}
+
+	return htmlBuf.String(), textBuf.String(), nil
+}
+
+func (e *BrevoEmailService) generatePasswordResetContent(user *models.User, resetToken string) (string, string, error) {
+	// HTML Template for password reset
+	htmlTemplate := `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Your Password</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .header { background: #D72638; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; margin: -20px -20px 20px -20px; }
+        .content { padding: 20px 0; }
+        .reset-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #D72638; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #666; }
+        .btn { display: inline-block; background: #D72638; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+        .btn:hover { background: #B91E2F; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Reset Your Password</h1>
+            <p>We received a request to reset your password</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hi {{.User.Name}},</h2>
+            <p>You recently requested to reset your password for your Motiv Events account. Click the button below to reset it:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{.AppURL}}/reset-password?token={{.ResetToken}}" class="btn">Reset My Password</a>
+            </div>
+            
+            <div class="reset-info">
+                <h3>🔒 Security Information</h3>
+                <p><strong>This link will expire in 1 hour</strong> for your security.</p>
+                <p>If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+            </div>
+            
+            <div class="warning">
+                <p><strong>⚠️ Important:</strong> If the button above doesn't work, copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 3px;">
+                    {{.AppURL}}/reset-password?token={{.ResetToken}}
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>If you have any questions, contact us at support@motivevents.com</p>
+            <p>© 2025 Motiv Events. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`
+
+	// Text Template for password reset
+	textTemplate := `
+Reset Your Password - Motiv Events
+
+Hi {{.User.Name}},
+
+You recently requested to reset your password for your Motiv Events account.
+
+To reset your password, click the following link:
+{{.AppURL}}/reset-password?token={{.ResetToken}}
+
+SECURITY INFORMATION:
+- This link will expire in 1 hour for your security
+- If you didn't request this password reset, you can safely ignore this email
+- Your password will remain unchanged if you don't click the link
+
+If you have any questions, contact us at support@motivevents.com
+
+© 2025 Motiv Events. All rights reserved.
+`
+
+	data := struct {
+		User       *models.User
+		ResetToken string
+		AppURL     string
+	}{
+		User:       user,
+		ResetToken: resetToken,
+		AppURL:     os.Getenv("FRONTEND_URL"),
 	}
 
 	// Generate HTML content

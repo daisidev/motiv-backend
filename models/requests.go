@@ -162,3 +162,15 @@ type TicketResponse struct {
 	AttendeeData AttendeeDataRequest `json:"attendeeData"`
 	PurchasedAt  time.Time           `json:"purchasedAt"`
 }
+
+// ForgotPasswordRequest represents the request payload for forgot password
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+// ResetPasswordRequest represents the request payload for resetting password
+type ResetPasswordRequest struct {
+	Token           string `json:"token" validate:"required"`
+	NewPassword     string `json:"newPassword" validate:"required,min=6"`
+	ConfirmPassword string `json:"confirmPassword" validate:"required"`
+}

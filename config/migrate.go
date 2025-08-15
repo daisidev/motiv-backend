@@ -10,6 +10,7 @@ func MigrateDatabase() {
 	// First, migrate the basic models without custom enums
 	err := DB.AutoMigrate(
 		&models.User{}, 
+		&models.PasswordResetToken{},
 		&models.Event{}, 
 		&models.Ticket{}, 
 		&models.TicketType{}, 
