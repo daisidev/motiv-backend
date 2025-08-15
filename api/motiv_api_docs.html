@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motiv API Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8fafc;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #000000 0%, #333333 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        nav {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            padding: 1rem;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+        
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .nav-item {
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #333333;
+            transition: all 0.2s;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .nav-item:hover {
+            background: #e0e0e0;
+            color: #000000;
+            transform: translateY(-1px);
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #000000, #333333);
+            color: white;
+            padding: 1.5rem;
+        }
+        
+        .section-content {
+            padding: 2rem;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        h3 {
+            color: #000000;
+            font-size: 1.3rem;
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        h4 {
+            color: #666666;
+            font-size: 1.1rem;
+            margin: 1.5rem 0 0.5rem 0;
+        }
+        
+        .endpoint {
+            background: #f8f8f8;
+            border-left: 4px solid #000000;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-right: 10px;
+            text-transform: uppercase;
+        }
+        
+        .method.get { background: #666666; color: white; }
+        .method.post { background: #333333; color: white; }
+        .method.put { background: #000000; color: white; }
+        .method.delete { background: #888888; color: white; }
+        
+        .url {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #000000;
+            color: #ffffff;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        pre {
+            background: #000000;
+            color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .json-key { color: #cccccc; }
+        .json-string { color: #ffffff; }
+        .json-number { color: #aaaaaa; }
+        .json-boolean { color: #888888; }
+        .json-comment { color: #666666; font-style: italic; }
+        
+        .auth-note {
+            background: #f5f5f5;
+            border: 1px solid #999999;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .auth-note strong {
+            color: #333333;
+        }
+        
+        .status-codes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .status-code {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #666666;
+        }
+        
+        .status-2xx { border-left-color: #000000; }
+        .status-4xx { border-left-color: #666666; }
+        .status-5xx { border-left-color: #333333; }
+        
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .params-table th {
+            background: #000000;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .params-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .params-table tr:nth-child(even) {
+            background: #f8f8f8;
+        }
+        
+        .required {
+            color: #333333;
+            font-weight: bold;
+        }
+        
+        .optional {
+            color: #666666;
+        }
+        
+        .type-badge {
+            background: #e0e0e0;
+            color: #333333;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-family: monospace;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .section-content {
+                padding: 1rem;
+            }
+            
+            .status-codes {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #000000;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .back-to-top:hover {
+            background: #333333;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Motiv API Documentation</h1>
+            <p class="subtitle">Complete API Reference for Frontend Developers</p>
+        </header>
+
+        <nav>
+            <div class="nav-grid">
+                <a href="#config" class="nav-item">Base Configuration</a>
+                <a href="#auth" class="nav-item">Authentication</a>
+                <a href="#user" class="nav-item">User Profile</a>
+                <a href="#wishlist" class="nav-item">Wishlist</a>
+                <a href="#events" class="nav-item">Events</a>
+                <a href="#host" class="nav-item">Host Management</a>
+                <a href="#attendees" class="nav-item">Attendees</a>
+                <a href="#payments" class="nav-item">Payments</a>
+                <a href="#reviews" class="nav-item">Reviews</a>
+                <a href="#financial" class="nav-item">Financial Data</a>
+                <a href="#errors" class="nav-item">Error Handling</a>
+            </div>
+        </nav>
+
+        <section id="config" class="section">
+            <div class="section-header">
+                <h2>Base Configuration</h2>
+            </div>
+            <div class="section-content">
+                <p><strong>Base URL:</strong> <span class="url">/api/v1</span></p>
+                <div class="auth-note">
+                    <strong>Authentication:</strong> Bearer Token (JWT) - Include in headers as <code>Authorization: Bearer &lt;token&gt;</code>
+                </div>
+            </div>
+        </section>
+
+        <section id="auth" class="section">
+            <div class="section-header">
+                <h2>Authentication Endpoints</h2>
+            </div>
+            <div class="section-content">
+                <h3>User Signup</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/auth/signup</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"name"</span>: <span class="json-string">"string (required, min 2 chars)"</span>,
+  <span class="json-key">"username"</span>: <span class="json-string">"string (required, 3-30 chars)"</span>,
+  <span class="json-key">"email"</span>: <span class="json-string">"string (required, valid email)"</span>,
+  <span class="json-key">"password"</span>: <span class="json-string">"string (required, min 6 chars)"</span>,
+  <span class="json-key">"confirmPassword"</span>: <span class="json-string">"string (required)"</span>,
+  <span class="json-key">"role"</span>: <span class="json-string">"guest"</span> | <span class="json-string">"host"</span> <span class="json-comment">(optional, default: guest)</span>
+}</code></pre>
+
+                <h4>Response (201 - Success):</h4>
+                <pre><code>{
+  <span class="json-key">"token"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"user"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+    <span class="json-key">"name"</span>: <span class="json-string">"string"</span>,
+    <span class="json-key">"username"</span>: <span class="json-string">"string"</span>,
+    <span class="json-key">"email"</span>: <span class="json-string">"string"</span>,
+    <span class="json-key">"avatar"</span>: <span class="json-string">"string"</span>,
+    <span class="json-key">"role"</span>: <span class="json-string">"guest"</span> | <span class="json-string">"host"</span> | <span class="json-string">"admin"</span> | <span class="json-string">"superhost"</span>
+  }
+}</code></pre>
+
+                <h3>User Login</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/auth/login</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"email"</span>: <span class="json-string">"string (required)"</span>,
+  <span class="json-key">"password"</span>: <span class="json-string">"string (required)"</span>
+}</code></pre>
+
+                <h3>Google OAuth</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/auth/google</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"idToken"</span>: <span class="json-string">"string (required)"</span>
+}</code></pre>
+
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"token"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"user"</span>: { <span class="json-comment">/* User object */</span> },
+  <span class="json-key">"isNewUser"</span>: <span class="json-boolean">boolean</span>
+}</code></pre>
+
+                <h3>Password Reset</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/auth/forgot-password</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"email"</span>: <span class="json-string">"string (required)"</span>
+}</code></pre>
+
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/auth/reset-password</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"token"</span>: <span class="json-string">"string (required)"</span>,
+  <span class="json-key">"newPassword"</span>: <span class="json-string">"string (required, min 6 chars)"</span>,
+  <span class="json-key">"confirmPassword"</span>: <span class="json-string">"string (required)"</span>
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="user" class="section">
+            <div class="section-header">
+                <h2>User Profile Endpoints</h2>
+            </div>
+            <div class="section-content">
+                <h3>Get Current User</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/users/me</span>
+                </div>
+                <div class="auth-note">
+                    <strong>Authorization required:</strong> Bearer &lt;token&gt;
+                </div>
+
+                <h3>Update User Profile</h3>
+                <div class="endpoint">
+                    <span class="method put">PUT</span>
+                    <span class="url">/api/v1/users/me</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"name"</span>: <span class="json-string">"string (optional)"</span>,
+  <span class="json-key">"avatar"</span>: <span class="json-string">"string (optional)"</span>
+}</code></pre>
+
+                <h3>Get User's Tickets</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/users/me/tickets</span>
+                </div>
+
+                <h4>Response:</h4>
+                <pre><code>[
+  {
+    <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+    <span class="json-key">"eventId"</span>: <span class="json-string">"uuid"</span>,
+    <span class="json-key">"event"</span>: { <span class="json-comment">/* Event object */</span> },
+    <span class="json-key">"ticketTypeId"</span>: <span class="json-string">"uuid"</span>,
+    <span class="json-key">"ticketType"</span>: { <span class="json-comment">/* TicketType object */</span> },
+    <span class="json-key">"qrCode"</span>: <span class="json-string">"string"</span>,
+    <span class="json-key">"attendeeData"</span>: {
+      <span class="json-key">"fullName"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"email"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"phone"</span>: <span class="json-string">"string"</span>
+    },
+    <span class="json-key">"purchasedAt"</span>: <span class="json-string">"datetime"</span>
+  }
+]</code></pre>
+            </div>
+        </section>
+
+        <section id="wishlist" class="section">
+            <div class="section-header">
+                <h2>Wishlist Management</h2>
+            </div>
+            <div class="section-content">
+                <h3>Get User's Wishlist</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/users/me/wishlist</span>
+                </div>
+
+                <h3>Add Event to Wishlist</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/users/me/wishlist</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"uuid (required)"</span>
+}</code></pre>
+
+                <h3>Remove Event from Wishlist</h3>
+                <div class="endpoint">
+                    <span class="method delete">DELETE</span>
+                    <span class="url">/api/v1/users/me/wishlist</span>
+                </div>
+
+                <h3>Check if Event is in Wishlist</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/users/me/wishlist/check?eventId=&lt;uuid&gt;</span>
+                </div>
+                
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"inWishlist"</span>: <span class="json-boolean">boolean</span>
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="events" class="section">
+            <div class="section-header">
+                <h2>Event Endpoints</h2>
+            </div>
+            <div class="section-content">
+                <h3>List Events with Filtering</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/events</span>
+                </div>
+
+                <h4>Query Parameters:</h4>
+                <table class="params-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="optional">page</span></td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td>Page number</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">limit</span></td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td>Items per page (max: 100)</td>
+                            <td>12</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">search</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td>Search in title/description</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">tags</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td>Comma-separated tags</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">location</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td>Location filter</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">event_type</span></td>
+                            <td><span class="type-badge">enum</span></td>
+                            <td>"free" or "ticketed"</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">date_from</span></td>
+                            <td><span class="type-badge">date</span></td>
+                            <td>Filter from date (YYYY-MM-DD)</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">date_to</span></td>
+                            <td><span class="type-badge">date</span></td>
+                            <td>Filter until date (YYYY-MM-DD)</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Get Event by ID</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/events/{id}</span>
+                </div>
+
+                <h3>Get Search Suggestions</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/events/suggestions?q=&lt;search_term&gt;</span>
+                </div>
+
+                <h3>Record Event View</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/events/{id}/view</span>
+                </div>
+
+                <h3>Get Event Analytics</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/events/{id}/analytics</span>
+                </div>
+                
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"totalViews"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"uniqueViews"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"ticketsSold"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"revenue"</span>: <span class="json-number">number</span>,
+  <span class="json-key">"conversionRate"</span>: <span class="json-number">number</span>,
+  <span class="json-key">"wishlistAdds"</span>: <span class="json-number">integer</span>
+}</code></pre>
+
+                <h3>Get Event Reviews</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/events/{id}/reviews</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="host" class="section">
+            <div class="section-header">
+                <h2>Host Management Endpoints</h2>
+            </div>
+            <div class="section-content">
+                <h3>Get Host's Events</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/events</span>
+                </div>
+
+                <h3>Create New Event</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/hosts/me/events</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"title"</span>: <span class="json-string">"string (required)"</span>,
+  <span class="json-key">"description"</span>: <span class="json-string">"string (optional)"</span>,
+  <span class="json-key">"eventType"</span>: <span class="json-string">"ticketed"</span> | <span class="json-string">"free"</span> <span class="json-comment">(required)</span>,
+  <span class="json-key">"status"</span>: <span class="json-string">"draft"</span> | <span class="json-string">"active"</span> | <span class="json-string">"cancelled"</span> <span class="json-comment">(optional, default: active)</span>,
+  <span class="json-key">"startDate"</span>: <span class="json-string">"date (required, YYYY-MM-DD)"</span>,
+  <span class="json-key">"startTime"</span>: <span class="json-string">"string (required, HH:MM)"</span>,
+  <span class="json-key">"endTime"</span>: <span class="json-string">"string (required, HH:MM)"</span>,
+  <span class="json-key">"location"</span>: <span class="json-string">"string (required)"</span>,
+  <span class="json-key">"locationData"</span>: {
+    <span class="json-key">"address"</span>: <span class="json-string">"string (required)"</span>,
+    <span class="json-key">"manualDescription"</span>: <span class="json-string">"string (optional)"</span>,
+    <span class="json-key">"coordinates"</span>: {
+      <span class="json-key">"lat"</span>: <span class="json-number">float (required)</span>,
+      <span class="json-key">"lng"</span>: <span class="json-number">float (required)</span>
+    },
+    <span class="json-key">"placeId"</span>: <span class="json-string">"string (optional)"</span>
+  },
+  <span class="json-key">"tags"</span>: [<span class="json-string">"string"</span>] <span class="json-comment">(optional)</span>,
+  <span class="json-key">"bannerImageURL"</span>: <span class="json-string">"string (optional)"</span>,
+  <span class="json-key">"ticketTypes"</span>: [
+    {
+      <span class="json-key">"name"</span>: <span class="json-string">"string (required)"</span>,
+      <span class="json-key">"price"</span>: <span class="json-number">number (required, min: 0)</span>,
+      <span class="json-key">"description"</span>: <span class="json-string">"string (optional)"</span>,
+      <span class="json-key">"totalQuantity"</span>: <span class="json-number">integer (required, min: 1)</span>
+    }
+  ] <span class="json-comment">(optional)</span>
+}</code></pre>
+
+                <h3>Update Event</h3>
+                <div class="endpoint">
+                    <span class="method put">PUT</span>
+                    <span class="url">/api/v1/hosts/me/events/{id}</span>
+                </div>
+
+                <h3>Delete Event</h3>
+                <div class="endpoint">
+                    <span class="method delete">DELETE</span>
+                    <span class="url">/api/v1/hosts/me/events/{id}</span>
+                </div>
+
+                <h3>Get Host Dashboard Analytics</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/analytics/dashboard</span>
+                </div>
+                
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"totalEvents"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"totalRevenue"</span>: <span class="json-number">number</span>,
+  <span class="json-key">"totalAttendees"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"totalViews"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"averageRating"</span>: <span class="json-number">number</span>
+}</code></pre>
+
+                <h3>Get Monthly Revenue</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/analytics/revenue</span>
+                </div>
+                
+                <h4>Response:</h4>
+                <pre><code>[
+  {
+    <span class="json-key">"month"</span>: <span class="json-string">"string"</span>,
+    <span class="json-key">"revenue"</span>: <span class="json-number">number</span>
+  }
+]</code></pre>
+            </div>
+        </section>
+
+        <section id="attendees" class="section">
+            <div class="section-header">
+                <h2>Attendee Management</h2>
+            </div>
+            <div class="section-content">
+                <h3>Get All Attendees for Host's Events</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/attendees</span>
+                </div>
+
+                <h4>Query Parameters:</h4>
+                <table class="params-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="optional">page</span></td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td>Page number</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">limit</span></td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td>Items per page (max: 100)</td>
+                            <td>50</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">event_id</span></td>
+                            <td><span class="type-badge">uuid</span></td>
+                            <td>Filter by specific event</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">ticket_type</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td>Filter by ticket type</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">status</span></td>
+                            <td><span class="type-badge">enum</span></td>
+                            <td>"pending", "confirmed", "checked_in", "cancelled"</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">search</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td>Search by name or email</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+      <span class="json-key">"name"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"email"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"phone"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"eventTitle"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"ticketType"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"purchaseDate"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"amount"</span>: <span class="json-number">number</span>,
+      <span class="json-key">"status"</span>: <span class="json-string">"pending|confirmed|checked_in|cancelled"</span>,
+      <span class="json-key">"checkInTime"</span>: <span class="json-string">"datetime"</span>
+    }
+  ],
+  <span class="json-key">"total"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"page"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"limit"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"hasMore"</span>: <span class="json-boolean">boolean</span>,
+  <span class="json-key">"stats"</span>: {
+    <span class="json-key">"confirmed"</span>: <span class="json-number">integer</span>,
+    <span class="json-key">"checked_in"</span>: <span class="json-number">integer</span>,
+    <span class="json-key">"pending"</span>: <span class="json-number">integer</span>,
+    <span class="json-key">"cancelled"</span>: <span class="json-number">integer</span>
+  }
+}</code></pre>
+
+                <h3>Export Attendees to CSV</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/attendees/export</span>
+                </div>
+                <p>Accepts the same query parameters as attendees list. Returns CSV file.</p>
+
+                <h3>Get Event-Specific Attendees</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/events/{eventId}/attendees</span>
+                </div>
+
+                <h3>Check-in Attendee via QR Code</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/hosts/me/attendees/checkin</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"qrCode"</span>: <span class="json-string">"string (required)"</span>,
+  <span class="json-key">"eventId"</span>: <span class="json-string">"uuid (required)"</span>
+}</code></pre>
+
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"message"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"attendee"</span>: { <span class="json-comment">/* Attendee object */</span> }
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="payments" class="section">
+            <div class="section-header">
+                <h2>Payment & Ticketing</h2>
+            </div>
+            <div class="section-content">
+                <h3>Initiate Payment</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/payments/initiate</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"uuid (required)"</span>,
+  <span class="json-key">"email"</span>: <span class="json-string">"string (required)"</span>,
+  <span class="json-key">"attendeeData"</span>: {
+    <span class="json-key">"fullName"</span>: <span class="json-string">"string (required)"</span>,
+    <span class="json-key">"email"</span>: <span class="json-string">"string (required)"</span>,
+    <span class="json-key">"phone"</span>: <span class="json-string">"string (required)"</span>
+  },
+  <span class="json-key">"attendees"</span>: [
+    {
+      <span class="json-key">"fullName"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"email"</span>: <span class="json-string">"string"</span>,
+      <span class="json-key">"phone"</span>: <span class="json-string">"string"</span>
+    }
+  ] <span class="json-comment">(optional, for multiple attendees)</span>,
+  <span class="json-key">"ticketDetails"</span>: [
+    {
+      <span class="json-key">"ticketTypeId"</span>: <span class="json-string">"uuid (required)"</span>,
+      <span class="json-key">"ticketTypeName"</span>: <span class="json-string">"string (required)"</span>,
+      <span class="json-key">"quantity"</span>: <span class="json-number">integer (required, min: 1)</span>,
+      <span class="json-key">"price"</span>: <span class="json-number">number (required, min: 0)</span>
+    }
+  ]
+}</code></pre>
+
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"reference"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"amount"</span>: <span class="json-number">integer</span> <span class="json-comment">(amount in kobo)</span>,
+  <span class="json-key">"paystackUrl"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"publicKey"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"email"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"currency"</span>: <span class="json-string">"string"</span>
+}</code></pre>
+
+                <h3>RSVP for Free Event</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/tickets/rsvp</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"uuid (required)"</span>,
+  <span class="json-key">"attendeeData"</span>: {
+    <span class="json-key">"fullName"</span>: <span class="json-string">"string (required)"</span>,
+    <span class="json-key">"email"</span>: <span class="json-string">"string (required)"</span>,
+    <span class="json-key">"phone"</span>: <span class="json-string">"string (required)"</span>
+  }
+}</code></pre>
+
+                <h3>Simulate Payment Success (Testing)</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/payments/simulate-success</span>
+                </div>
+                <p><em>This endpoint is for testing purposes only.</em></p>
+            </div>
+        </section>
+
+        <section id="reviews" class="section">
+            <div class="section-header">
+                <h2>Reviews</h2>
+            </div>
+            <div class="section-content">
+                <h3>Create Review</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/reviews</span>
+                </div>
+                
+                <h4>Request Body:</h4>
+                <pre><code>{
+  <span class="json-key">"eventId"</span>: <span class="json-string">"uuid (required)"</span>,
+  <span class="json-key">"rating"</span>: <span class="json-number">integer (required, 1-5)</span>,
+  <span class="json-key">"comment"</span>: <span class="json-string">"string (optional)"</span>
+}</code></pre>
+
+                <h3>Update Review</h3>
+                <div class="endpoint">
+                    <span class="method put">PUT</span>
+                    <span class="url">/api/v1/reviews/{id}</span>
+                </div>
+
+                <h3>Delete Review</h3>
+                <div class="endpoint">
+                    <span class="method delete">DELETE</span>
+                    <span class="url">/api/v1/reviews/{id}</span>
+                </div>
+
+                <h3>Mark Review as Helpful</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/reviews/{id}/helpful</span>
+                </div>
+
+                <h3>Get Host Reviews</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/reviews</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="financial" class="section">
+            <div class="section-header">
+                <h2>Host Financial Data</h2>
+            </div>
+            <div class="section-content">
+                <h3>Get Host Earnings</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/payments/earnings</span>
+                </div>
+                
+                <h4>Response:</h4>
+                <pre><code>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"totalEarnings"</span>: <span class="json-number">number</span>,
+    <span class="json-key">"pendingPayout"</span>: <span class="json-number">number</span>,
+    <span class="json-key">"lastPayout"</span>: <span class="json-number">number</span>
+  }
+}</code></pre>
+
+                <h3>Get Host Payouts</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/payments/payouts</span>
+                </div>
+
+                <h4>Query Parameters:</h4>
+                <table class="params-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="optional">page</span></td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td><span class="optional">limit</span></td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td>10</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Get Pending Payouts</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/hosts/me/payments/pending</span>
+                </div>
+
+                <h4>Payout Object Structure:</h4>
+                <pre><code>{
+  <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+  <span class="json-key">"hostId"</span>: <span class="json-string">"uuid"</span>,
+  <span class="json-key">"eventId"</span>: <span class="json-string">"uuid"</span>,
+  <span class="json-key">"amount"</span>: <span class="json-number">number</span>,
+  <span class="json-key">"currency"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"status"</span>: <span class="json-string">"pending|completed|failed|refunded"</span>,
+  <span class="json-key">"method"</span>: <span class="json-string">"bank_transfer|card|wallet"</span>,
+  <span class="json-key">"reference"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"processedAt"</span>: <span class="json-string">"datetime"</span>,
+  <span class="json-key">"payoutDate"</span>: <span class="json-string">"datetime"</span>
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="errors" class="section">
+            <div class="section-header">
+                <h2>Error Handling</h2>
+            </div>
+            <div class="section-content">
+                <h3>HTTP Status Codes</h3>
+                <div class="status-codes">
+                    <div class="status-code status-2xx">
+                        <h4>2xx - Success</h4>
+                        <p><strong>200:</strong> Success<br>
+                        <strong>201:</strong> Created<br>
+                        <strong>204:</strong> No Content</p>
+                    </div>
+                    <div class="status-code status-4xx">
+                        <h4>4xx - Client Errors</h4>
+                        <p><strong>400:</strong> Bad Request (validation errors)<br>
+                        <strong>401:</strong> Unauthorized<br>
+                        <strong>403:</strong> Forbidden<br>
+                        <strong>404:</strong> Not Found</p>
+                    </div>
+                    <div class="status-code status-5xx">
+                        <h4>5xx - Server Errors</h4>
+                        <p><strong>500:</strong> Internal Server Error</p>
+                    </div>
+                </div>
+
+                <h3>Error Response Format</h3>
+                <pre><code>{
+  <span class="json-key">"error"</span>: <span class="json-string">"Error message description"</span>
+}</code></pre>
+
+                <h3>Common Data Types</h3>
+                
+                <h4>User Object</h4>
+                <pre><code>{
+  <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+  <span class="json-key">"name"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"username"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"email"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"avatar"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"role"</span>: <span class="json-string">"guest|host|admin|superhost"</span>
+}</code></pre>
+
+                <h4>Event Object</h4>
+                <pre><code>{
+  <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+  <span class="json-key">"title"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"description"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"start_date"</span>: <span class="json-string">"datetime"</span>,
+  <span class="json-key">"start_time"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"end_time"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"location"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"latitude"</span>: <span class="json-number">float</span>,
+  <span class="json-key">"longitude"</span>: <span class="json-number">float</span>,
+  <span class="json-key">"tags"</span>: [<span class="json-string">"string"</span>],
+  <span class="json-key">"banner_image_url"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"event_type"</span>: <span class="json-string">"ticketed|free"</span>,
+  <span class="json-key">"host"</span>: { <span class="json-comment">/* User object */</span> },
+  <span class="json-key">"ticket_types"</span>: [ <span class="json-comment">/* TicketType objects */</span> ],
+  <span class="json-key">"status"</span>: <span class="json-string">"draft|active|cancelled"</span>
+}</code></pre>
+
+                <h4>TicketType Object</h4>
+                <pre><code>{
+  <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+  <span class="json-key">"name"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"price"</span>: <span class="json-number">number</span>,
+  <span class="json-key">"description"</span>: <span class="json-string">"string"</span>,
+  <span class="json-key">"total_quantity"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"sold_quantity"</span>: <span class="json-number">integer</span>,
+  <span class="json-key">"available_quantity"</span>: <span class="json-number">integer</span>
+}</code></pre>
+
+                <h3>Important Implementation Notes</h3>
+                
+                <div class="auth-note">
+                    <strong>Authentication:</strong> Most endpoints require a Bearer token in the Authorization header.
+                </div>
+
+                <h4>Date Formats:</h4>
+                <ul>
+                    <li><strong>Dates:</strong> <code>YYYY-MM-DD</code></li>
+                    <li><strong>Times:</strong> <code>HH:MM</code></li>
+                    <li><strong>DateTime:</strong> ISO 8601 format</li>
+                </ul>
+
+                <h4>Additional Notes:</h4>
+                <ul>
+                    <li><strong>Pagination:</strong> List endpoints support <code>page</code> and <code>limit</code> parameters</li>
+                    <li><strong>File Uploads:</strong> Banner images should be uploaded separately and URL provided in <code>bannerImageURL</code></li>
+                    <li><strong>Currency:</strong> All monetary values are in the base currency (likely Naira), with Paystack amounts in kobo</li>
+                    <li><strong>QR Codes:</strong> Generated automatically for tickets and used for check-in functionality</li>
+                    <li><strong>Webhooks:</strong> Payment webhooks are handled automatically by the backend</li>
+                    <li><strong>Rate Limiting:</strong> Be mindful of API rate limits, especially for search and analytics endpoints</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <button class="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Back to top">
+        ↑
+    </button>
+
+    <script>
+        // Show/hide back to top button
+        window.addEventListener('scroll', function() {
+            const button = document.querySelector('.back-to-top');
+            if (window.pageYOffset > 300) {
+                button.style.display = 'block';
+            } else {
+                button.style.display = 'none';
+            }
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Copy code blocks on click
+        document.querySelectorAll('pre').forEach(pre => {
+            pre.addEventListener('click', function() {
+                const text = this.textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    // Create a temporary notification
+                    const notification = document.createElement('div');
+                    notification.textContent = 'Copied to clipboard!';
+                    notification.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: #10b981;
+                        color: white;
+                        padding: 10px 20px;
+                        border-radius: 6px;
+                        z-index: 1000;
+                        font-size: 14px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    `;
+                    document.body.appendChild(notification);
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 2000);
+                });
+            });
+            
+            // Add cursor pointer to indicate clickable
+            pre.style.cursor = 'pointer';
+            pre.title = 'Click to copy';
+        });
+    </script>
+</body>
+</html>
+  
