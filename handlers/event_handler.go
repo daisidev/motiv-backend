@@ -160,8 +160,10 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 
 	// Add location data if provided
 	if req.LocationData != nil {
-		newEvent.Latitude = &req.LocationData.Coordinates.Lat
-		newEvent.Longitude = &req.LocationData.Coordinates.Lng
+		if req.LocationData.Coordinates != nil {
+			newEvent.Latitude = &req.LocationData.Coordinates.Lat
+			newEvent.Longitude = &req.LocationData.Coordinates.Lng
+		}
 		newEvent.ManualDescription = req.LocationData.ManualDescription
 		if req.LocationData.PlaceID != nil {
 			newEvent.PlaceID = req.LocationData.PlaceID
@@ -284,8 +286,10 @@ func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 	
 	// Update location data if provided
 	if req.LocationData != nil {
-		event.Latitude = &req.LocationData.Coordinates.Lat
-		event.Longitude = &req.LocationData.Coordinates.Lng
+		if req.LocationData.Coordinates != nil {
+			event.Latitude = &req.LocationData.Coordinates.Lat
+			event.Longitude = &req.LocationData.Coordinates.Lng
+		}
 		event.ManualDescription = req.LocationData.ManualDescription
 		if req.LocationData.PlaceID != nil {
 			event.PlaceID = req.LocationData.PlaceID
