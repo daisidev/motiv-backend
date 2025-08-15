@@ -35,9 +35,10 @@ type CreateEventRequest struct {
 
 // LocationDataRequest represents location data with coordinates
 type LocationDataRequest struct {
-	Address     string              `json:"address" validate:"required"`
-	Coordinates CoordinatesRequest  `json:"coordinates" validate:"required"`
-	PlaceID     *string             `json:"placeId,omitempty"`
+	Address           string              `json:"address" validate:"required"`
+	ManualDescription string              `json:"manualDescription,omitempty"`
+	Coordinates       CoordinatesRequest  `json:"coordinates" validate:"required"`
+	PlaceID           *string             `json:"placeId,omitempty"`
 }
 
 // CoordinatesRequest represents latitude and longitude
