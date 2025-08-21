@@ -495,8 +495,14 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 
 		// Send ticket confirmation email to customer
 		log.Printf("📧 SENDING CUSTOMER EMAIL: To %s for ticket %s", ticket.AttendeeEmail, ticket.ID.String())
+		log.Printf("📧 EMAIL COMPARISON: User.Email=%s, Ticket.AttendeeEmail=%s", user.Email, ticket.AttendeeEmail)
+		if user.Email != ticket.AttendeeEmail {
+			log.Printf("⚠️ EMAIL MISMATCH: User email differs from attendee email - this could cause delivery issues")
+		}
+
 		if err := h.emailService.SendTicketConfirmation(ticket, eventDetails, user); err != nil {
 			log.Printf("❌ EMAIL ERROR: Failed to send ticket confirmation email for ticket %s to %s: %v", ticket.ID.String(), ticket.AttendeeEmail, err)
+			log.Printf("❌ EMAIL ERROR DETAILS: Error type: %T, Message: %s", err, err.Error())
 			// Don't fail the entire operation if email fails
 		} else {
 			log.Printf("✅ EMAIL SENT: Ticket confirmation email sent successfully for ticket %s to %s", ticket.ID.String(), ticket.AttendeeEmail)

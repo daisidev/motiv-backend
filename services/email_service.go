@@ -28,9 +28,9 @@ type EmailService interface {
 
 type ZohoEmailService struct {
 	fromEmail string
-	password   string
-	smtpHost   string
-	smtpPort   string
+	password  string
+	smtpHost  string
+	smtpPort  string
 }
 
 func NewZohoEmailService() EmailService {
@@ -57,23 +57,27 @@ func (e *ZohoEmailService) SendTicketConfirmation(ticket *models.Ticket, event *
 	log.Printf("Event: %s", event.Title)
 	log.Printf("User: %s (%s)", user.Name, user.Email)
 	log.Printf("Attendee: %s (%s)", ticket.AttendeeFullName, ticket.AttendeeEmail)
+	log.Printf("📧 TARGET EMAIL: %s", ticket.AttendeeEmail)
 
 	subject := fmt.Sprintf("Your Ticket for %s - Confirmation", event.Title)
 	log.Printf("Email subject: %s", subject)
 
+	log.Printf("🔧 GENERATING EMAIL CONTENT...")
 	htmlContent, _, err := e.generateTicketConfirmationContent(ticket, event, user)
 	if err != nil {
 		log.Printf("❌ Failed to generate ticket confirmation content: %v", err)
 		return fmt.Errorf("failed to generate email content: %w", err)
 	}
-	log.Printf("✅ Email content generated successfully")
+	log.Printf("✅ Email content generated successfully (length: %d characters)", len(htmlContent))
 
+	log.Printf("📤 CALLING SMTP SEND...")
 	err = e.sendEmail(ticket.AttendeeEmail, subject, htmlContent)
 	if err != nil {
-		log.Printf("❌ Failed to send ticket confirmation email: %v", err)
+		log.Printf("❌ SMTP SEND FAILED: %v", err)
+		log.Printf("❌ EMAIL DETAILS: To=%s, Subject=%s", ticket.AttendeeEmail, subject)
 		return err
 	}
-	log.Printf("✅ Ticket confirmation email sent successfully")
+	log.Printf("✅ SMTP SEND SUCCESSFUL: Ticket confirmation email sent to %s", ticket.AttendeeEmail)
 	log.Printf("==========================================")
 
 	return nil
@@ -164,7 +168,7 @@ func (e *ZohoEmailService) sendEmail(to, subject, body string) error {
 		log.Printf("❌ Failed to send email via SMTP: %v", err)
 		return fmt.Errorf("error sending email: %w", err)
 	}
-	
+
 	log.Printf("✅ EMAIL SENT SUCCESSFULLY VIA ZOHO SMTP!")
 	log.Printf("===============================")
 	return nil
