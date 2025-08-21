@@ -1,0 +1,133 @@
+func (e *BrevoEmailService) generateWelcomeEmailContent(user *models.User) (string, string, error) {
+	// HTML Template
+	htmlTemplate := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Motiv Events</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: bold; color: #6366f1; margin-bottom: 10px; }
+        .welcome-title { font-size: 24px; color: #333; margin-bottom: 20px; }
+        .content { color: #666; line-height: 1.6; margin-bottom: 30px; }
+        .highlight { background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6366f1; }
+        .features { margin: 20px 0; }
+        .feature { margin: 10px 0; padding-left: 20px; position: relative; }
+        .feature:before { content: "✓"; position: absolute; left: 0; color: #10b981; font-weight: bold; }
+        .cta { text-align: center; margin: 30px 0; }
+        .button { display: inline-block; background-color: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .footer { text-align: center; color: #999; font-size: 14px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Motiv Events</div>
+            <h1 class="welcome-title">Welcome to Motiv, {{.Name}}! 🎉</h1>
+        </div>
+        
+        <div class="content">
+            <p>We're excited to have you join our community of event enthusiasts! Whether you're looking to discover amazing events or host your own, Motiv is here to make it happen.</p>
+            
+            <div class="highlight">
+                <strong>Your Account Details:</strong><br>
+                <strong>Name:</strong> {{.Name}}<br>
+                <strong>Username:</strong> {{.Username}}<br>
+                <strong>Email:</strong> {{.Email}}
+            </div>
+            
+            <p>Here's what you can do with Motiv:</p>
+            
+            <div class="features">
+                <div class="feature">Discover exciting events in your area</div>
+                <div class="feature">Purchase tickets securely</div>
+                <div class="feature">Create and host your own events</div>
+                <div class="feature">Connect with like-minded people</div>
+                <div class="feature">Get personalized event recommendations</div>
+            </div>
+            
+            <p>Ready to explore? Start by browsing events in your area or create your first event!</p>
+            
+            <div class="cta">
+                <a href="{{.AppURL}}" class="button">Explore Events</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Thanks for joining Motiv Events!<br>
+            If you have any questions, feel free to reach out to our support team.</p>
+            <p>© 2025 Motiv Events. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`
+
+	// Text Template
+	textTemplate := `Welcome to Motiv Events, {{.Name}}!
+
+We're excited to have you join our community of event enthusiasts! Whether you're looking to discover amazing events or host your own, Motiv is here to make it happen.
+
+Your Account Details:
+Name: {{.Name}}
+Username: {{.Username}}
+Email: {{.Email}}
+
+Here's what you can do with Motiv:
+✓ Discover exciting events in your area
+✓ Purchase tickets securely
+✓ Create and host your own events
+✓ Connect with like-minded people
+✓ Get personalized event recommendations
+
+Ready to explore? Start by browsing events in your area or create your first event!
+
+Visit: {{.AppURL}}
+
+Thanks for joining Motiv Events!
+If you have any questions, feel free to reach out to our support team.
+
+© 2025 Motiv Events. All rights reserved.`
+
+	// Get app URL from environment or use default
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "https://motiv.events" // Default URL
+	}
+
+	// Data for template
+	data := struct {
+		Name     string
+		Username string
+		Email    string
+		AppURL   string
+	}{
+		Name:     user.Name,
+		Username: user.Username,
+		Email:    user.Email,
+		AppURL:   appURL,
+	}
+
+	// Generate HTML content
+	htmlTmpl, err := template.New("html").Parse(htmlTemplate)
+	if err != nil {
+		return "", "", err
+	}
+	var htmlBuf bytes.Buffer
+	if err := htmlTmpl.Execute(&htmlBuf, data); err != nil {
+		return "", "", err
+	}
+
+	// Generate text content
+	textTmpl, err := template.New("text").Parse(textTemplate)
+	if err != nil {
+		return "", "", err
+	}
+	var textBuf bytes.Buffer
+	if err := textTmpl.Execute(&textBuf, data); err != nil {
+		return "", "", err
+	}
+
+	return htmlBuf.String(), textBuf.String(), nil
+}

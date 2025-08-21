@@ -46,3 +46,15 @@ func (m *MockEmailService) SendPasswordResetEmail(user *models.User, resetToken 
 
 	return nil
 }
+
+func (m *MockEmailService) SendWelcomeEmail(user *models.User) error {
+	log.Printf("MOCK EMAIL: Welcome email sent to %s (%s)", user.Name, user.Email)
+
+	fmt.Printf("\n=== WELCOME EMAIL ===\n")
+	fmt.Printf("To: %s\n", user.Email)
+	fmt.Printf("Subject: Welcome to Motiv Events!\n")
+	fmt.Printf("Welcome message for user: %s (Username: %s)\n", user.Name, user.Username)
+	fmt.Printf("====================\n\n")
+
+	return nil
+}

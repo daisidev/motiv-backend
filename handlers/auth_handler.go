@@ -148,6 +148,14 @@ func (h *AuthHandler) Signup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create user"})
 	}
 
+	// Send welcome email (don't block signup if email fails)
+	go func() {
+		if err := h.emailService.SendWelcomeEmail(&newUser); err != nil {
+			// Log error but don't fail the signup
+			fmt.Printf("Failed to send welcome email to %s: %v\n", newUser.Email, err)
+		}
+	}()
+
 	// Create token for automatic login after signup
 	token := jwt.New(jwt.SigningMethodHS256)
 
@@ -312,6 +320,14 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	if err := h.userService.CreateUser(&newUser); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create user"})
 	}
+
+	// Send welcome email for new Google users (don't block signup if email fails)
+	go func() {
+		if err := h.emailService.SendWelcomeEmail(&newUser); err != nil {
+			// Log error but don't fail the signup
+			fmt.Printf("Failed to send welcome email to %s: %v\n", newUser.Email, err)
+		}
+	}()
 
 	// Create token for the new user
 	token := jwt.New(jwt.SigningMethodHS256)
