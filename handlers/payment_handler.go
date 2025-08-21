@@ -144,58 +144,85 @@ func (h *PaymentHandler) InitiatePayment(c *fiber.Ctx) error {
 	claims := user.Claims.(jwt.MapClaims)
 	userID, err := uuid.Parse(claims["user_id"].(string))
 	if err != nil {
+		log.Printf("❌ PAYMENT INIT ERROR: Failed to parse user ID: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
 	}
 
+	log.Printf("💳 PAYMENT INITIATION: Starting payment initiation for user: %s", userID.String())
+
 	// Validate that the user exists
-	_, err = h.userService.GetUserByID(userID)
+	userDetails, err := h.userService.GetUserByID(userID)
 	if err != nil {
-		log.Printf("User with ID %s not found: %v", userID, err)
+		log.Printf("❌ PAYMENT INIT ERROR: User with ID %s not found: %v", userID, err)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User not found"})
 	}
+	log.Printf("👤 USER VERIFIED: User %s (%s) found for payment initiation", userDetails.Email, userDetails.Name)
 
 	var req models.PaymentInitiationRequest
 	if err := c.BodyParser(&req); err != nil {
-		log.Printf("Error parsing payment initiation request: %v", err)
+		log.Printf("❌ PAYMENT INIT ERROR: Error parsing payment initiation request: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
+	log.Printf("📋 PAYMENT REQUEST: EventID=%s, Email=%s, TicketTypes=%d", req.EventID, req.Email, len(req.TicketDetails))
+	log.Printf("👥 ATTENDEE INFO: %s (%s, %s)", req.AttendeeData.FullName, req.AttendeeData.Email, req.AttendeeData.Phone)
+
 	eventID, err := uuid.Parse(req.EventID)
 	if err != nil {
+		log.Printf("❌ PAYMENT INIT ERROR: Invalid event ID format: %s", req.EventID)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
 	}
 
 	// Verify event exists and get event details
-	_, err = h.eventService.GetEventByID(eventID)
+	eventDetails, err := h.eventService.GetEventByID(eventID)
 	if err != nil {
+		log.Printf("❌ PAYMENT INIT ERROR: Event %s not found: %v", eventID.String(), err)
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Event not found"})
 	}
+	log.Printf("📅 EVENT VERIFIED: Event '%s' found for payment", eventDetails.Title)
 
 	// Calculate total amount and validate ticket availability
 	var totalAmount float64
-	for _, ticketDetail := range req.TicketDetails {
+	log.Printf("💰 CALCULATING TOTAL: Starting ticket validation and amount calculation")
+
+	for i, ticketDetail := range req.TicketDetails {
+		log.Printf("🎫 TICKET VALIDATION %d/%d: Type=%s, Quantity=%d, Price=%.2f",
+			i+1, len(req.TicketDetails), ticketDetail.TicketTypeID, ticketDetail.Quantity, ticketDetail.Price)
+
 		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
 		if err != nil {
+			log.Printf("❌ PAYMENT INIT ERROR: Invalid ticket type ID: %s", ticketDetail.TicketTypeID)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ticket type ID"})
 		}
 
 		// Verify ticket type exists and has availability
 		ticketType, err := h.ticketService.GetTicketTypeByID(ticketTypeID)
 		if err != nil {
+			log.Printf("❌ PAYMENT INIT ERROR: Ticket type %s not found: %v", ticketTypeID.String(), err)
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Ticket type not found"})
 		}
 
+		log.Printf("🎫 TICKET TYPE VERIFIED: %s - Available: %d, Sold: %d, Requesting: %d",
+			ticketType.Name, ticketType.TotalQuantity-ticketType.SoldQuantity, ticketType.SoldQuantity, ticketDetail.Quantity)
+
 		if ticketType.SoldQuantity+ticketDetail.Quantity > ticketType.TotalQuantity {
+			log.Printf("❌ PAYMENT INIT ERROR: Not enough tickets available for %s. Available: %d, Requested: %d",
+				ticketType.Name, ticketType.TotalQuantity-ticketType.SoldQuantity, ticketDetail.Quantity)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": fmt.Sprintf("Not enough tickets available for %s", ticketType.Name),
 			})
 		}
 
-		totalAmount += ticketDetail.Price * float64(ticketDetail.Quantity)
+		subtotal := ticketDetail.Price * float64(ticketDetail.Quantity)
+		totalAmount += subtotal
+		log.Printf("💰 SUBTOTAL: %s x %d = %.2f NGN", ticketType.Name, ticketDetail.Quantity, subtotal)
 	}
+
+	log.Printf("💰 TOTAL AMOUNT: %.2f NGN (%.0f kobo)", totalAmount, totalAmount*100)
 
 	// Generate payment reference
 	reference := fmt.Sprintf("motiv_%s_%s_%d", req.EventID, userID.String()[:8], time.Now().Unix())
+	log.Printf("🔗 PAYMENT REFERENCE: Generated reference: %s", reference)
 
 	// Create payment record
 	payment := &models.Payment{
@@ -208,11 +235,13 @@ func (h *PaymentHandler) InitiatePayment(c *fiber.Ctx) error {
 		Reference: reference,
 	}
 
+	log.Printf("💾 PAYMENT RECORD: Creating payment record with status PENDING")
 	err = h.paymentService.CreatePayment(payment)
 	if err != nil {
-		log.Printf("Error creating payment record: %v", err)
+		log.Printf("❌ PAYMENT INIT ERROR: Error creating payment record: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create payment"})
 	}
+	log.Printf("✅ PAYMENT RECORD: Payment record created successfully with ID: %s", payment.ID.String())
 
 	// Return payment initiation response
 	response := models.PaymentInitiationResponse{
@@ -224,17 +253,20 @@ func (h *PaymentHandler) InitiatePayment(c *fiber.Ctx) error {
 		Currency:    "NGN",
 	}
 
+	log.Printf("🚀 PAYMENT INITIATED: Returning payment initiation response for %.2f NGN", totalAmount)
+	log.Printf("⏳ AWAITING WEBHOOK: Payment %s is now pending webhook confirmation", reference)
 	return c.JSON(response)
 }
 
 // POST /api/v1/payments/webhook
 func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
-	log.Printf("Received webhook from Paystack")
+	log.Printf("🔔 WEBHOOK RECEIVED: Payment webhook called from IP: %s", c.IP())
+	log.Printf("🔔 WEBHOOK HEADERS: %+v", c.GetReqHeaders())
 
 	// Verify Paystack signature
 	signature := c.Get("x-paystack-signature")
 	if signature == "" {
-		log.Printf("Missing Paystack signature")
+		log.Printf("❌ WEBHOOK ERROR: Missing Paystack signature")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing signature"})
 	}
 
@@ -242,9 +274,11 @@ func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
 	secretKey := os.Getenv("PAYSTACK_SECRET_KEY")
 
 	if secretKey == "" {
-		log.Printf("PAYSTACK_SECRET_KEY not configured")
+		log.Printf("❌ WEBHOOK ERROR: PAYSTACK_SECRET_KEY not configured")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Server configuration error"})
 	}
+
+	log.Printf("🔐 WEBHOOK VERIFICATION: Verifying signature for payload length: %d bytes", len(body))
 
 	// Verify signature
 	mac := hmac.New(sha512.New, []byte(secretKey))
@@ -252,38 +286,50 @@ func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
 	expectedSignature := hex.EncodeToString(mac.Sum(nil))
 
 	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
-		log.Printf("Invalid Paystack signature. Expected: %s, Got: %s", expectedSignature, signature)
+		log.Printf("❌ WEBHOOK ERROR: Invalid Paystack signature. Expected: %s, Got: %s", expectedSignature, signature)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid signature"})
 	}
 
-	log.Printf("Webhook signature verified successfully")
+	log.Printf("✅ WEBHOOK VERIFICATION: Signature verified successfully")
 
 	var webhookEvent models.PaystackWebhookEvent
 	if err := json.Unmarshal(body, &webhookEvent); err != nil {
-		log.Printf("Error parsing webhook payload: %v", err)
+		log.Printf("❌ WEBHOOK ERROR: Error parsing webhook payload: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid payload"})
 	}
 
-	log.Printf("Webhook event type: %s, Reference: %s", webhookEvent.Event, webhookEvent.Data.Reference)
+	log.Printf("🎯 WEBHOOK EVENT: Type=%s, Reference=%s, Amount=%v, Status=%s",
+		webhookEvent.Event,
+		webhookEvent.Data.Reference,
+		webhookEvent.Data.Amount,
+		webhookEvent.Data.Status)
+
+	log.Printf("📧 WEBHOOK CUSTOMER: Email=%s", webhookEvent.Data.Customer.Email)
+	log.Printf("📊 WEBHOOK METADATA: %+v", webhookEvent.Data.Metadata)
 
 	// Handle different webhook events
 	switch webhookEvent.Event {
 	case "charge.success":
+		log.Printf("💳 WEBHOOK PROCESSING: Handling successful payment for reference: %s", webhookEvent.Data.Reference)
 		err := h.handleSuccessfulPayment(webhookEvent)
 		if err != nil {
-			log.Printf("Error handling successful payment: %v", err)
+			log.Printf("❌ WEBHOOK ERROR: Error handling successful payment: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process payment"})
 		}
+		log.Printf("✅ WEBHOOK SUCCESS: Successfully processed payment for reference: %s", webhookEvent.Data.Reference)
 	case "charge.failed":
+		log.Printf("💔 WEBHOOK PROCESSING: Handling failed payment for reference: %s", webhookEvent.Data.Reference)
 		err := h.handleFailedPayment(webhookEvent)
 		if err != nil {
-			log.Printf("Error handling failed payment: %v", err)
+			log.Printf("❌ WEBHOOK ERROR: Error handling failed payment: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process payment failure"})
 		}
+		log.Printf("✅ WEBHOOK SUCCESS: Successfully processed payment failure for reference: %s", webhookEvent.Data.Reference)
 	default:
-		log.Printf("Unhandled webhook event: %s", webhookEvent.Event)
+		log.Printf("⚠️ WEBHOOK WARNING: Unhandled webhook event: %s for reference: %s", webhookEvent.Event, webhookEvent.Data.Reference)
 	}
 
+	log.Printf("🎉 WEBHOOK COMPLETE: Webhook processed successfully for event: %s, reference: %s", webhookEvent.Event, webhookEvent.Data.Reference)
 	return c.JSON(fiber.Map{"message": "Webhook processed successfully"})
 }
 
@@ -298,41 +344,59 @@ func (h *PaymentHandler) TestWebhook(c *fiber.Ctx) error {
 }
 
 func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEvent) error {
-	log.Printf("Processing successful payment for reference: %s", event.Data.Reference)
+	log.Printf("🚀 PAYMENT SUCCESS: Processing successful payment for reference: %s", event.Data.Reference)
+	log.Printf("💰 PAYMENT DETAILS: Amount=%v, Currency=%s, Channel=%s", event.Data.Amount, event.Data.Currency, event.Data.Channel)
 
 	// Update payment status
 	err := h.paymentService.UpdatePaymentStatus(event.Data.Reference, models.PaymentCompleted, "")
 	if err != nil {
+		log.Printf("❌ PAYMENT ERROR: Failed to update payment status for reference %s: %v", event.Data.Reference, err)
 		return fmt.Errorf("failed to update payment status: %w", err)
+	}
+	log.Printf("✅ PAYMENT UPDATE: Payment status updated to completed for reference: %s", event.Data.Reference)
+
+	// Validate event ID in metadata
+	if event.Data.Metadata.EventID == "" {
+		log.Printf("❌ PAYMENT ERROR: Missing event ID in metadata for reference: %s", event.Data.Reference)
+		return fmt.Errorf("missing event ID in payment metadata")
 	}
 
 	// Create tickets for the user
 	eventID, err := uuid.Parse(event.Data.Metadata.EventID)
 	if err != nil {
+		log.Printf("❌ PAYMENT ERROR: Invalid event ID format in metadata for reference %s: %v", event.Data.Reference, err)
 		return fmt.Errorf("invalid event ID in metadata: %w", err)
 	}
+	log.Printf("🎫 TICKET CREATION: Creating tickets for event: %s", eventID.String())
 
 	// Get event details for email
 	eventDetails, err := h.eventService.GetEventByID(eventID)
 	if err != nil {
+		log.Printf("❌ PAYMENT ERROR: Failed to get event details for event %s: %v", eventID.String(), err)
 		return fmt.Errorf("failed to get event details: %w", err)
 	}
+	log.Printf("📅 EVENT DETAILS: Found event '%s' for payment reference: %s", eventDetails.Title, event.Data.Reference)
 
 	// Get host details for email
 	host, err := h.userService.GetUserByID(eventDetails.HostID)
 	if err != nil {
+		log.Printf("❌ PAYMENT ERROR: Failed to get host details for host %s: %v", eventDetails.HostID.String(), err)
 		return fmt.Errorf("failed to get host details: %w", err)
 	}
+	log.Printf("👤 HOST DETAILS: Found host '%s' for event: %s", host.Email, eventDetails.Title)
 
 	// Find user by email (assuming the customer email matches user email)
 	userID, err := h.paymentService.GetUserIDByEmail(event.Data.Customer.Email)
 	if err != nil {
+		log.Printf("❌ PAYMENT ERROR: Failed to find user by email %s: %v", event.Data.Customer.Email, err)
 		return fmt.Errorf("failed to find user by email: %w", err)
 	}
+	log.Printf("👤 USER DETAILS: Found user ID %s for email: %s", userID.String(), event.Data.Customer.Email)
 
 	// Get user details for email
 	user, err := h.userService.GetUserByID(userID)
 	if err != nil {
+		log.Printf("❌ PAYMENT ERROR: Failed to get user details for user %s: %v", userID.String(), err)
 		return fmt.Errorf("failed to get user details: %w", err)
 	}
 
@@ -351,16 +415,26 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 		Phone:    event.Data.Metadata.AttendeeData.Phone,
 	}}
 
-	log.Printf("Creating tickets for %d ticket types", len(event.Data.Metadata.TicketDetails))
+	log.Printf("🎟️ TICKET PROCESSING: Creating tickets for %d ticket types", len(event.Data.Metadata.TicketDetails))
+	log.Printf("👥 ATTENDEE INFO: Primary attendee: %s (%s)", attendees[0].FullName, attendees[0].Email)
+
+	if len(event.Data.Metadata.TicketDetails) == 0 {
+		log.Printf("⚠️ TICKET WARNING: No ticket details found in payment metadata for reference: %s", event.Data.Reference)
+		return fmt.Errorf("no ticket details found in payment metadata")
+	}
 
 	for _, ticketDetail := range event.Data.Metadata.TicketDetails {
 		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
 		if err != nil {
-			log.Printf("Invalid ticket type ID: %s", ticketDetail.TicketTypeID)
+			log.Printf("❌ TICKET ERROR: Invalid ticket type ID: %s for reference: %s", ticketDetail.TicketTypeID, event.Data.Reference)
 			continue
 		}
 
-		log.Printf("Creating %d tickets for ticket type: %s", ticketDetail.Quantity, ticketDetail.TicketTypeName)
+		log.Printf("🎫 TICKET CREATION: Creating %d tickets for ticket type: %s (ID: %s, Price: %v)",
+			ticketDetail.Quantity,
+			ticketDetail.TicketTypeName,
+			ticketDetail.TicketTypeID,
+			ticketDetail.Price)
 
 		for i := 0; i < ticketDetail.Quantity; i++ {
 			// Cycle through attendees if we have more tickets than attendees
@@ -377,42 +451,54 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 				Quantity:         1, // Each ticket is for one person
 			}
 
+			log.Printf("🎫 TICKET CREATING: Ticket %d/%d for attendee: %s", i+1, ticketDetail.Quantity, currentAttendee.FullName)
+
 			err = h.ticketService.CreateTicketWithQR(ticket)
 			if err != nil {
-				log.Printf("Failed to create ticket: %v", err)
+				log.Printf("❌ TICKET ERROR: Failed to create ticket %d for type %s: %v", i+1, ticketDetail.TicketTypeName, err)
 				continue
 			}
 
-			log.Printf("Successfully created ticket %s for attendee %s", ticket.ID.String(), currentAttendee.FullName)
+			log.Printf("✅ TICKET CREATED: Successfully created ticket %s for attendee %s", ticket.ID.String(), currentAttendee.FullName)
 			ticketsCreated = append(ticketsCreated, ticket)
 			attendeeIndex++
 		}
 
 		// Update ticket type sold quantity
+		log.Printf("📊 UPDATING SALES: Updating sold quantity for ticket type %s by %d", ticketTypeID.String(), ticketDetail.Quantity)
 		err = h.ticketService.UpdateSoldQuantity(ticketTypeID, ticketDetail.Quantity)
 		if err != nil {
-			log.Printf("Failed to update sold quantity: %v", err)
+			log.Printf("❌ SALES ERROR: Failed to update sold quantity for ticket type %s: %v", ticketTypeID.String(), err)
+		} else {
+			log.Printf("✅ SALES UPDATED: Successfully updated sold quantity for ticket type %s", ticketTypeID.String())
 		}
 	}
 
-	log.Printf("Created %d tickets total", len(ticketsCreated))
+	log.Printf("🎉 TICKETS CREATED: Created %d tickets total for payment reference: %s", len(ticketsCreated), event.Data.Reference)
 
 	// Send email notifications for each ticket created
-	for _, ticket := range ticketsCreated {
+	log.Printf("📧 EMAIL NOTIFICATIONS: Starting email notifications for %d tickets", len(ticketsCreated))
+	for i, ticket := range ticketsCreated {
+		log.Printf("📧 EMAIL SENDING: Sending notifications for ticket %d/%d (ID: %s)", i+1, len(ticketsCreated), ticket.ID.String())
+
 		// Send ticket confirmation email to customer
 		if err := h.emailService.SendTicketConfirmation(ticket, eventDetails, user); err != nil {
-			log.Printf("Failed to send ticket confirmation email: %v", err)
+			log.Printf("❌ EMAIL ERROR: Failed to send ticket confirmation email for ticket %s: %v", ticket.ID.String(), err)
 			// Don't fail the entire operation if email fails
+		} else {
+			log.Printf("✅ EMAIL SENT: Ticket confirmation email sent for ticket %s", ticket.ID.String())
 		}
 
 		// Send notification email to host
 		if err := h.emailService.SendHostNotification(ticket, eventDetails, user, host); err != nil {
-			log.Printf("Failed to send host notification email: %v", err)
+			log.Printf("❌ EMAIL ERROR: Failed to send host notification email for ticket %s: %v", ticket.ID.String(), err)
 			// Don't fail the entire operation if email fails
+		} else {
+			log.Printf("✅ EMAIL SENT: Host notification email sent for ticket %s", ticket.ID.String())
 		}
 	}
 
-	log.Printf("Webhook processing completed successfully for reference: %s", event.Data.Reference)
+	log.Printf("🎉 WEBHOOK SUCCESS: Webhook processing completed successfully for reference: %s - Created %d tickets", event.Data.Reference, len(ticketsCreated))
 	return nil
 }
 
@@ -422,19 +508,26 @@ func (h *PaymentHandler) handleFailedPayment(event models.PaystackWebhookEvent) 
 
 // POST /api/v1/payments/simulate-success - For testing without webhooks
 func (h *PaymentHandler) SimulatePaymentSuccess(c *fiber.Ctx) error {
+	log.Printf("🧪 SIMULATE PAYMENT: Payment simulation endpoint called - this should only be used for testing!")
+
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	userID, err := uuid.Parse(claims["user_id"].(string))
 	if err != nil {
+		log.Printf("❌ SIMULATE ERROR: Failed to parse user ID: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
 	}
+
+	log.Printf("🧪 SIMULATE INITIATED: User %s is simulating payment success", userID.String())
 
 	// Validate that the user exists
 	userDetails, err := h.userService.GetUserByID(userID)
 	if err != nil {
-		log.Printf("User with ID %s not found: %v", userID, err)
+		log.Printf("❌ SIMULATE ERROR: User with ID %s not found: %v", userID, err)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User not found"})
 	}
+
+	log.Printf("👤 USER VERIFIED: User %s (%s) found for simulation", userDetails.Email, userDetails.Name)
 
 	var req struct {
 		Reference     string                       `json:"reference"`
