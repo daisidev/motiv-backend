@@ -20,7 +20,7 @@ func main() {
 	}
 
 	// Check required environment variables
-	requiredVars := []string{"BREVO_API_KEY", "BREVO_SENDER_EMAIL", "FRONTEND_URL"}
+	requiredVars := []string{"FRONTEND_URL"}
 	for _, envVar := range requiredVars {
 		if os.Getenv(envVar) == "" {
 			log.Fatalf("Required environment variable %s is not set", envVar)
@@ -28,12 +28,10 @@ func main() {
 	}
 
 	fmt.Println("🧪 Testing Email Service...")
-	fmt.Println("BREVO_API_KEY:", os.Getenv("BREVO_API_KEY")[:10]+"...")
-	fmt.Println("BREVO_SENDER_EMAIL:", os.Getenv("BREVO_SENDER_EMAIL"))
-	fmt.Println("FRONTEND_URL:", os.Getenv("FRONTEND_URL"))
+	fmt.Println("Using Zoho SMTP email service")
 
 	// Create email service
-	emailService := services.NewBrevoEmailService()
+	emailService := services.NewZohoEmailService()
 
 	// Create test data
 	event := &models.Event{

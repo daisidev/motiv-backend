@@ -47,18 +47,10 @@ func main() {
 	analyticsService := services.NewAnalyticsService(analyticsRepo, paymentRepo, attendeeRepo, reviewRepo)
 	attendeeService := services.NewAttendeeService(attendeeRepo, ticketRepo)
 
-	// Choose email service based on configuration
+	// Use Zoho email service
 	var emailService services.EmailService
-	brevoAPIKey := os.Getenv("BREVO_API_KEY")
-	brevoSenderEmail := os.Getenv("BREVO_SENDER_EMAIL")
-
-	if brevoAPIKey != "" && brevoSenderEmail != "" && brevoSenderEmail != "your-verified-email@yourdomain.com" {
-		log.Println("Using Brevo email service")
-		emailService = services.NewBrevoEmailService()
-	} else {
-		log.Println("Using mock email service (check BREVO_API_KEY and BREVO_SENDER_EMAIL)")
-		emailService = services.NewMockEmailService()
-	}
+	log.Println("Using Zoho email service")
+	emailService = services.NewZohoEmailService()
 
 	// Create handlers
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
@@ -76,7 +68,7 @@ func main() {
 
 	// Middleware
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000, http://127.0.0.1:3000, https://motiv-azure.vercel.app, https://motiv-alpha-seven.vercel.app",
+		AllowOrigins:     "http://localhost:3000, http://localhost:3001, http://127.0.0.1:3000, https://motiv-azure.vercel.app, https://motiv-alpha-seven.vercel.app",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
 		AllowCredentials: true,

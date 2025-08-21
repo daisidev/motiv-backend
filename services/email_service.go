@@ -2,14 +2,22 @@ package services
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"html/template"
-	"net/http"
+	"log"
+	"net/smtp"
 	"os"
 
 	"github.com/hidenkeys/motiv-backend/models"
 )
+
+// Helper function for safe string truncation
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 type EmailService interface {
 	SendTicketConfirmation(ticket *models.Ticket, event *models.Event, user *models.User) error
@@ -18,174 +26,151 @@ type EmailService interface {
 	SendWelcomeEmail(user *models.User) error
 }
 
-type BrevoEmailService struct {
-	apiKey  string
-	baseURL string
+type ZohoEmailService struct {
+	fromEmail string
+	password   string
+	smtpHost   string
+	smtpPort   string
 }
 
-type BrevoEmailRequest struct {
-	Sender      EmailContact   `json:"sender"`
-	To          []EmailContact `json:"to"`
-	Subject     string         `json:"subject"`
-	HtmlContent string         `json:"htmlContent"`
-	TextContent string         `json:"textContent,omitempty"`
-}
+func NewZohoEmailService() EmailService {
+	fromEmail := "teniola.sobande@zidihq.com"
+	password := "EVYvaG9HJGrh"
 
-type EmailContact struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-}
+	log.Printf("=== EMAIL SERVICE INITIALIZATION ===")
+	log.Printf("Using Zoho SMTP service")
+	log.Printf("From email: %s", fromEmail)
+	log.Printf("SMTP Host: smtp.zoho.com:587")
+	log.Printf("======================================")
 
-func NewBrevoEmailService() EmailService {
-	return &BrevoEmailService{
-		apiKey:  os.Getenv("BREVO_API_KEY"),
-		baseURL: "https://api.brevo.com/v3",
+	return &ZohoEmailService{
+		fromEmail: fromEmail,
+		password:  password,
+		smtpHost:  "smtp.zoho.com",
+		smtpPort:  "587",
 	}
 }
 
-func (e *BrevoEmailService) SendTicketConfirmation(ticket *models.Ticket, event *models.Event, user *models.User) error {
+func (e *ZohoEmailService) SendTicketConfirmation(ticket *models.Ticket, event *models.Event, user *models.User) error {
+	log.Printf("=== SENDING TICKET CONFIRMATION EMAIL ===")
+	log.Printf("Ticket ID: %s", ticket.ID.String())
+	log.Printf("Event: %s", event.Title)
+	log.Printf("User: %s (%s)", user.Name, user.Email)
+	log.Printf("Attendee: %s (%s)", ticket.AttendeeFullName, ticket.AttendeeEmail)
+
 	subject := fmt.Sprintf("Your Ticket for %s - Confirmation", event.Title)
+	log.Printf("Email subject: %s", subject)
 
-	htmlContent, textContent, err := e.generateTicketConfirmationContent(ticket, event, user)
+	htmlContent, _, err := e.generateTicketConfirmationContent(ticket, event, user)
 	if err != nil {
+		log.Printf("❌ Failed to generate ticket confirmation content: %v", err)
 		return fmt.Errorf("failed to generate email content: %w", err)
 	}
+	log.Printf("✅ Email content generated successfully")
 
-	emailRequest := BrevoEmailRequest{
-		Sender: EmailContact{
-			Name:  "Motiv Events",
-			Email: os.Getenv("BREVO_SENDER_EMAIL"),
-		},
-		To: []EmailContact{
-			{
-				Name:  ticket.AttendeeFullName,
-				Email: ticket.AttendeeEmail,
-			},
-		},
-		Subject:     subject,
-		HtmlContent: htmlContent,
-		TextContent: textContent,
-	}
-
-	return e.sendEmail(emailRequest)
-}
-
-func (e *BrevoEmailService) SendHostNotification(ticket *models.Ticket, event *models.Event, user *models.User, host *models.User) error {
-	subject := fmt.Sprintf("New Ticket Purchase for %s", event.Title)
-
-	htmlContent, textContent, err := e.generateHostNotificationContent(ticket, event, user, host)
+	err = e.sendEmail(ticket.AttendeeEmail, subject, htmlContent)
 	if err != nil {
-		return fmt.Errorf("failed to generate email content: %w", err)
+		log.Printf("❌ Failed to send ticket confirmation email: %v", err)
+		return err
 	}
-
-	emailRequest := BrevoEmailRequest{
-		Sender: EmailContact{
-			Name:  "Motiv Events",
-			Email: os.Getenv("BREVO_SENDER_EMAIL"),
-		},
-		To: []EmailContact{
-			{
-				Name:  host.Name,
-				Email: host.Email,
-			},
-		},
-		Subject:     subject,
-		HtmlContent: htmlContent,
-		TextContent: textContent,
-	}
-
-	return e.sendEmail(emailRequest)
-}
-
-func (e *BrevoEmailService) SendPasswordResetEmail(user *models.User, resetToken string) error {
-	subject := "Reset Your Password - Motiv Events"
-
-	htmlContent, textContent, err := e.generatePasswordResetContent(user, resetToken)
-	if err != nil {
-		return fmt.Errorf("failed to generate email content: %w", err)
-	}
-
-	emailRequest := BrevoEmailRequest{
-		Sender: EmailContact{
-			Name:  "Motiv Events",
-			Email: os.Getenv("BREVO_SENDER_EMAIL"),
-		},
-		To: []EmailContact{
-			{
-				Name:  user.Name,
-				Email: user.Email,
-			},
-		},
-		Subject:     subject,
-		HtmlContent: htmlContent,
-		TextContent: textContent,
-	}
-
-	return e.sendEmail(emailRequest)
-}
-
-func (e *BrevoEmailService) SendWelcomeEmail(user *models.User) error {
-	subject := "Welcome to Motiv Events!"
-
-	htmlContent, textContent, err := e.generateWelcomeEmailContent(user)
-	if err != nil {
-		return fmt.Errorf("failed to generate email content: %w", err)
-	}
-
-	emailRequest := BrevoEmailRequest{
-		Sender: EmailContact{
-			Name:  "Motiv Events",
-			Email: os.Getenv("BREVO_SENDER_EMAIL"),
-		},
-		To: []EmailContact{
-			{
-				Name:  user.Name,
-				Email: user.Email,
-			},
-		},
-		Subject:     subject,
-		HtmlContent: htmlContent,
-		TextContent: textContent,
-	}
-
-	return e.sendEmail(emailRequest)
-}
-
-func (e *BrevoEmailService) sendEmail(emailRequest BrevoEmailRequest) error {
-	jsonData, err := json.Marshal(emailRequest)
-	if err != nil {
-		return fmt.Errorf("failed to marshal email request: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", e.baseURL+"/smtp/email", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("api-key", e.apiKey)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		// Read response body for error details
-		bodyBytes, _ := json.Marshal(emailRequest)
-		fmt.Printf("Email request body: %s\n", string(bodyBytes))
-		fmt.Printf("API Key configured: %t\n", e.apiKey != "")
-		fmt.Printf("Sender email: %s\n", os.Getenv("BREVO_SENDER_EMAIL"))
-		return fmt.Errorf("email API returned status: %d", resp.StatusCode)
-	}
+	log.Printf("✅ Ticket confirmation email sent successfully")
+	log.Printf("==========================================")
 
 	return nil
 }
 
-func (e *BrevoEmailService) generateTicketConfirmationContent(ticket *models.Ticket, event *models.Event, user *models.User) (string, string, error) {
+func (e *ZohoEmailService) SendHostNotification(ticket *models.Ticket, event *models.Event, user *models.User, host *models.User) error {
+	log.Printf("=== SENDING HOST NOTIFICATION EMAIL ===")
+	log.Printf("Host: %s (%s)", host.Name, host.Email)
+	log.Printf("Event: %s (ID: %d)", event.Title, event.ID)
+	log.Printf("User: %s (%s)", user.Name, user.Email)
+	log.Printf("Ticket ID: %d", ticket.ID)
+
+	subject := fmt.Sprintf("New Ticket Purchase for %s", event.Title)
+
+	htmlContent, _, err := e.generateHostNotificationContent(ticket, event, user, host)
+	if err != nil {
+		log.Printf("❌ Failed to generate host notification content: %v", err)
+		return fmt.Errorf("failed to generate email content: %w", err)
+	}
+	log.Printf("✅ Host notification content generated successfully")
+
+	log.Printf("📧 Calling sendEmail for host notification...")
+	err = e.sendEmail(host.Email, subject, htmlContent)
+	if err != nil {
+		log.Printf("❌ Host notification failed: %v", err)
+		return err
+	}
+	log.Printf("✅ HOST NOTIFICATION EMAIL SENT SUCCESSFULLY!")
+	log.Printf("====================================")
+	return nil
+}
+
+func (e *ZohoEmailService) SendPasswordResetEmail(user *models.User, resetToken string) error {
+	subject := "Reset Your Password - Motiv Events"
+
+	htmlContent, _, err := e.generatePasswordResetContent(user, resetToken)
+	if err != nil {
+		return fmt.Errorf("failed to generate email content: %w", err)
+	}
+
+	return e.sendEmail(user.Email, subject, htmlContent)
+}
+
+func (e *ZohoEmailService) SendWelcomeEmail(user *models.User) error {
+	log.Printf("=== SENDING WELCOME EMAIL ===")
+	log.Printf("User: %s (%s)", user.Name, user.Email)
+	log.Printf("User ID: %d", user.ID)
+
+	subject := "Welcome to Motiv Events!"
+
+	htmlContent, _, err := e.generateWelcomeEmailContent(user)
+	if err != nil {
+		log.Printf("❌ Failed to generate welcome email content: %v", err)
+		return fmt.Errorf("failed to generate email content: %w", err)
+	}
+	log.Printf("✅ Welcome email content generated successfully")
+
+	log.Printf("📧 Calling sendEmail for welcome email...")
+	err = e.sendEmail(user.Email, subject, htmlContent)
+	if err != nil {
+		log.Printf("❌ Welcome email failed: %v", err)
+		return err
+	}
+	log.Printf("✅ WELCOME EMAIL SENT SUCCESSFULLY!")
+	log.Printf("==============================")
+	return nil
+}
+
+func (e *ZohoEmailService) sendEmail(to, subject, body string) error {
+	log.Printf("=== ZOHO SMTP EMAIL SENDING ===")
+	log.Printf("To: %s", to)
+	log.Printf("Subject: %s", subject)
+	log.Printf("From: %s", e.fromEmail)
+	log.Printf("SMTP Host: %s:%s", e.smtpHost, e.smtpPort)
+
+	// Use Zoho SMTP host in PlainAuth
+	auth := smtp.PlainAuth("", e.fromEmail, e.password, e.smtpHost)
+
+	msg := "From: " + e.fromEmail + "\n" +
+		"To: " + to + "\n" +
+		"Subject: " + subject + "\n" +
+		"MIME-version: 1.0;\n" +
+		"Content-Type: text/html; charset=\"UTF-8\";\n\n" +
+		body
+
+	err := smtp.SendMail(e.smtpHost+":"+e.smtpPort, auth, e.fromEmail, []string{to}, []byte(msg))
+	if err != nil {
+		log.Printf("❌ Failed to send email via SMTP: %v", err)
+		return fmt.Errorf("error sending email: %w", err)
+	}
+	
+	log.Printf("✅ EMAIL SENT SUCCESSFULLY VIA ZOHO SMTP!")
+	log.Printf("===============================")
+	return nil
+}
+
+func (e *ZohoEmailService) generateTicketConfirmationContent(ticket *models.Ticket, event *models.Event, user *models.User) (string, string, error) {
 	// HTML Template
 	htmlTemplate := `
 <!DOCTYPE html>
@@ -333,7 +318,7 @@ Need help? Contact us at support@motivevents.com
 	return htmlBuf.String(), textBuf.String(), nil
 }
 
-func (e *BrevoEmailService) generateHostNotificationContent(ticket *models.Ticket, event *models.Event, user *models.User, host *models.User) (string, string, error) {
+func (e *ZohoEmailService) generateHostNotificationContent(ticket *models.Ticket, event *models.Event, user *models.User, host *models.User) (string, string, error) {
 	// HTML Template for host notification
 	htmlTemplate := `
 <!DOCTYPE html>
@@ -458,7 +443,7 @@ Keep up the great work! Your event is gaining traction.
 	return htmlBuf.String(), textBuf.String(), nil
 }
 
-func (e *BrevoEmailService) generatePasswordResetContent(user *models.User, resetToken string) (string, string, error) {
+func (e *ZohoEmailService) generatePasswordResetContent(user *models.User, resetToken string) (string, string, error) {
 	// HTML Template for password reset
 	htmlTemplate := `
 <!DOCTYPE html>
@@ -570,7 +555,7 @@ If you have any questions, contact us at support@motivevents.com
 	return htmlBuf.String(), textBuf.String(), nil
 }
 
-func (e *BrevoEmailService) generateWelcomeEmailContent(user *models.User) (string, string, error) {
+func (e *ZohoEmailService) generateWelcomeEmailContent(user *models.User) (string, string, error) {
 	// HTML Template
 	htmlTemplate := `<!DOCTYPE html>
 <html>
