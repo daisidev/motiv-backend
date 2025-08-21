@@ -229,6 +229,8 @@ func (h *PaymentHandler) InitiatePayment(c *fiber.Ctx) error {
 
 // POST /api/v1/payments/webhook
 func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
+	log.Printf("Received webhook from Paystack")
+
 	// Verify Paystack signature
 	signature := c.Get("x-paystack-signature")
 	if signature == "" {
@@ -239,21 +241,30 @@ func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
 	body := c.Body()
 	secretKey := os.Getenv("PAYSTACK_SECRET_KEY")
 
+	if secretKey == "" {
+		log.Printf("PAYSTACK_SECRET_KEY not configured")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Server configuration error"})
+	}
+
 	// Verify signature
 	mac := hmac.New(sha512.New, []byte(secretKey))
 	mac.Write(body)
 	expectedSignature := hex.EncodeToString(mac.Sum(nil))
 
 	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
-		log.Printf("Invalid Paystack signature")
+		log.Printf("Invalid Paystack signature. Expected: %s, Got: %s", expectedSignature, signature)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid signature"})
 	}
+
+	log.Printf("Webhook signature verified successfully")
 
 	var webhookEvent models.PaystackWebhookEvent
 	if err := json.Unmarshal(body, &webhookEvent); err != nil {
 		log.Printf("Error parsing webhook payload: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid payload"})
 	}
+
+	log.Printf("Webhook event type: %s, Reference: %s", webhookEvent.Event, webhookEvent.Data.Reference)
 
 	// Handle different webhook events
 	switch webhookEvent.Event {
@@ -276,7 +287,19 @@ func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Webhook processed successfully"})
 }
 
+// GET /api/v1/payments/webhook/test - Test endpoint to verify webhook is reachable
+func (h *PaymentHandler) TestWebhook(c *fiber.Ctx) error {
+	log.Printf("Webhook test endpoint accessed from IP: %s", c.IP())
+	return c.JSON(fiber.Map{
+		"message":   "Webhook endpoint is reachable",
+		"timestamp": time.Now().Format(time.RFC3339),
+		"ip":        c.IP(),
+	})
+}
+
 func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEvent) error {
+	log.Printf("Processing successful payment for reference: %s", event.Data.Reference)
+
 	// Update payment status
 	err := h.paymentService.UpdatePaymentStatus(event.Data.Reference, models.PaymentCompleted, "")
 	if err != nil {
@@ -314,41 +337,65 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 	}
 
 	// Create tickets for each ticket type
-	// Note: For webhook, we'll use the primary attendee data since Paystack metadata has limitations
-	// In a production system, you might want to store attendee details separately and reference them
 	var ticketsCreated []*models.Ticket
+	attendeeIndex := 0
+
+	// Default to primary attendee if no additional attendees data available
+	attendees := []struct {
+		FullName string
+		Email    string
+		Phone    string
+	}{{
+		FullName: event.Data.Metadata.AttendeeData.FullName,
+		Email:    event.Data.Metadata.AttendeeData.Email,
+		Phone:    event.Data.Metadata.AttendeeData.Phone,
+	}}
+
+	log.Printf("Creating tickets for %d ticket types", len(event.Data.Metadata.TicketDetails))
+
 	for _, ticketDetail := range event.Data.Metadata.TicketDetails {
 		ticketTypeID, err := uuid.Parse(ticketDetail.TicketTypeID)
 		if err != nil {
-			return fmt.Errorf("invalid ticket type ID: %w", err)
+			log.Printf("Invalid ticket type ID: %s", ticketDetail.TicketTypeID)
+			continue
 		}
 
+		log.Printf("Creating %d tickets for ticket type: %s", ticketDetail.Quantity, ticketDetail.TicketTypeName)
+
 		for i := 0; i < ticketDetail.Quantity; i++ {
+			// Cycle through attendees if we have more tickets than attendees
+			currentAttendee := attendees[attendeeIndex%len(attendees)]
+
 			ticket := &models.Ticket{
 				EventID:          eventID,
 				UserID:           userID,
 				TicketTypeID:     ticketTypeID,
 				PaymentReference: event.Data.Reference,
-				AttendeeFullName: event.Data.Metadata.AttendeeData.FullName,
-				AttendeeEmail:    event.Data.Metadata.AttendeeData.Email,
-				AttendeePhone:    event.Data.Metadata.AttendeeData.Phone,
+				AttendeeFullName: currentAttendee.FullName,
+				AttendeeEmail:    currentAttendee.Email,
+				AttendeePhone:    currentAttendee.Phone,
 				Quantity:         1, // Each ticket is for one person
 			}
 
 			err = h.ticketService.CreateTicketWithQR(ticket)
 			if err != nil {
-				return fmt.Errorf("failed to create ticket: %w", err)
+				log.Printf("Failed to create ticket: %v", err)
+				continue
 			}
 
+			log.Printf("Successfully created ticket %s for attendee %s", ticket.ID.String(), currentAttendee.FullName)
 			ticketsCreated = append(ticketsCreated, ticket)
+			attendeeIndex++
 		}
 
 		// Update ticket type sold quantity
 		err = h.ticketService.UpdateSoldQuantity(ticketTypeID, ticketDetail.Quantity)
 		if err != nil {
-			return fmt.Errorf("failed to update sold quantity: %w", err)
+			log.Printf("Failed to update sold quantity: %v", err)
 		}
 	}
+
+	log.Printf("Created %d tickets total", len(ticketsCreated))
 
 	// Send email notifications for each ticket created
 	for _, ticket := range ticketsCreated {
@@ -365,6 +412,7 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 		}
 	}
 
+	log.Printf("Webhook processing completed successfully for reference: %s", event.Data.Reference)
 	return nil
 }
 
