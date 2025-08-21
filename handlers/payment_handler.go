@@ -305,9 +305,16 @@ func (h *PaymentHandler) PaymentWebhook(c *fiber.Ctx) error {
 		webhookEvent.Data.Status)
 
 	log.Printf("📧 WEBHOOK CUSTOMER: Email=%s", webhookEvent.Data.Customer.Email)
-	log.Printf("📊 WEBHOOK METADATA: %+v", webhookEvent.Data.Metadata)
-
-	// Handle different webhook events
+	log.Printf("📊 WEBHOOK METADATA: EventID=%s", webhookEvent.Data.Metadata.EventID)
+	log.Printf("📊 WEBHOOK ATTENDEE: Name=%s, Email=%s, Phone=%s",
+		webhookEvent.Data.Metadata.AttendeeData.FullName,
+		webhookEvent.Data.Metadata.AttendeeData.Email,
+		webhookEvent.Data.Metadata.AttendeeData.Phone)
+	log.Printf("📊 WEBHOOK TICKETS: %d ticket types", len(webhookEvent.Data.Metadata.TicketDetails))
+	for i, ticket := range webhookEvent.Data.Metadata.TicketDetails {
+		log.Printf("📊 WEBHOOK TICKET %d: TypeID=%s, Name=%s, Quantity=%d, Price=%.2f",
+			i+1, ticket.TicketTypeID, ticket.TicketTypeName, ticket.Quantity, ticket.Price)
+	} // Handle different webhook events
 	switch webhookEvent.Event {
 	case "charge.success":
 		log.Printf("💳 WEBHOOK PROCESSING: Handling successful payment for reference: %s", webhookEvent.Data.Reference)
@@ -386,9 +393,12 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 	log.Printf("👤 HOST DETAILS: Found host '%s' for event: %s", host.Email, eventDetails.Title)
 
 	// Find user by email (assuming the customer email matches user email)
+	log.Printf("🔍 USER LOOKUP: Searching for user with email: %s", event.Data.Customer.Email)
 	userID, err := h.paymentService.GetUserIDByEmail(event.Data.Customer.Email)
 	if err != nil {
 		log.Printf("❌ PAYMENT ERROR: Failed to find user by email %s: %v", event.Data.Customer.Email, err)
+		log.Printf("💡 EMAIL MISMATCH: The webhook customer email (%s) doesn't match any user in database", event.Data.Customer.Email)
+		log.Printf("💡 EMAIL MISMATCH: This could mean the payment email differs from the registered user email")
 		return fmt.Errorf("failed to find user by email: %w", err)
 	}
 	log.Printf("👤 USER DETAILS: Found user ID %s for email: %s", userID.String(), event.Data.Customer.Email)
@@ -480,21 +490,25 @@ func (h *PaymentHandler) handleSuccessfulPayment(event models.PaystackWebhookEve
 	log.Printf("📧 EMAIL NOTIFICATIONS: Starting email notifications for %d tickets", len(ticketsCreated))
 	for i, ticket := range ticketsCreated {
 		log.Printf("📧 EMAIL SENDING: Sending notifications for ticket %d/%d (ID: %s)", i+1, len(ticketsCreated), ticket.ID.String())
+		log.Printf("📧 EMAIL DETAILS: Customer=%s (UserID: %s), Attendee=%s (%s)", user.Email, user.ID.String(), ticket.AttendeeFullName, ticket.AttendeeEmail)
+		log.Printf("📧 EMAIL DETAILS: Host=%s (UserID: %s), Event=%s", host.Email, host.ID.String(), eventDetails.Title)
 
 		// Send ticket confirmation email to customer
+		log.Printf("📧 SENDING CUSTOMER EMAIL: To %s for ticket %s", ticket.AttendeeEmail, ticket.ID.String())
 		if err := h.emailService.SendTicketConfirmation(ticket, eventDetails, user); err != nil {
-			log.Printf("❌ EMAIL ERROR: Failed to send ticket confirmation email for ticket %s: %v", ticket.ID.String(), err)
+			log.Printf("❌ EMAIL ERROR: Failed to send ticket confirmation email for ticket %s to %s: %v", ticket.ID.String(), ticket.AttendeeEmail, err)
 			// Don't fail the entire operation if email fails
 		} else {
-			log.Printf("✅ EMAIL SENT: Ticket confirmation email sent for ticket %s", ticket.ID.String())
+			log.Printf("✅ EMAIL SENT: Ticket confirmation email sent successfully for ticket %s to %s", ticket.ID.String(), ticket.AttendeeEmail)
 		}
 
 		// Send notification email to host
+		log.Printf("📧 SENDING HOST EMAIL: To %s for ticket %s", host.Email, ticket.ID.String())
 		if err := h.emailService.SendHostNotification(ticket, eventDetails, user, host); err != nil {
-			log.Printf("❌ EMAIL ERROR: Failed to send host notification email for ticket %s: %v", ticket.ID.String(), err)
+			log.Printf("❌ EMAIL ERROR: Failed to send host notification email for ticket %s to %s: %v", ticket.ID.String(), host.Email, err)
 			// Don't fail the entire operation if email fails
 		} else {
-			log.Printf("✅ EMAIL SENT: Host notification email sent for ticket %s", ticket.ID.String())
+			log.Printf("✅ EMAIL SENT: Host notification email sent successfully for ticket %s to %s", ticket.ID.String(), host.Email)
 		}
 	}
 

@@ -30,7 +30,8 @@ func NewTicketHandler(ticketService services.TicketService, eventService service
 // PurchaseTicket handles purchasing a ticket
 // NOTE: This should NOT create tickets directly. Tickets should only be created via webhook confirmation.
 func (h *TicketHandler) PurchaseTicket(c *fiber.Ctx) error {
-	log.Printf("⚠️ DEPRECATED ROUTE: /tickets/purchase called - this route should redirect to payment flow")
+	log.Printf("🚨 SECURITY ALERT: /tickets/purchase route called - THIS SHOULD NOT HAPPEN FOR PAID EVENTS!")
+	log.Printf("🚨 CLIENT INFO: IP=%s, User-Agent=%s", c.IP(), c.Get("User-Agent"))
 
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
@@ -52,6 +53,7 @@ func (h *TicketHandler) PurchaseTicket(c *fiber.Ctx) error {
 
 	log.Printf("🚫 BLOCKING DIRECT PURCHASE: User %s attempted to purchase tickets directly without payment", userID.String())
 	log.Printf("🚫 REQUEST DETAILS: TicketTypeID=%s, Quantity=%d", request.TicketTypeID, request.Quantity)
+	log.Printf("🚫 THIS INDICATES: Frontend is trying to bypass payment verification!")
 
 	// IMPORTANT: Do not create tickets directly! This bypasses payment verification.
 	// Instead, return an error directing them to use the proper payment flow.
