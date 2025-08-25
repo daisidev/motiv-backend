@@ -314,7 +314,7 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 		Email:    strings.ToLower(strings.TrimSpace(firebaseUserInfo.Email)),
 		Password: "", // No password for Google OAuth users
 		Avatar:   firebaseUserInfo.Picture,
-		Role:     models.GuestRole, // Default role
+		Role:     models.HostRole, // Set to host role like normal signup
 	}
 
 	if err := h.userService.CreateUser(&newUser); err != nil {

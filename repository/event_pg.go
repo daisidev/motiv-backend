@@ -163,17 +163,59 @@ func (r *eventRepoPG) GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models.
 	// Find similar events based on:
 	// 1. Same location (highest priority)
 	// 2. Same host (medium priority) 
-	// 3. Similar tags (if available)
+	// 3. Other events (lowest priority)
 	// Exclude the current event and limit results
+	
+	// First try to get events from same location
 	query := r.db.Preload("Host").Preload("TicketTypes").
 		Where("id != ?", eventID).
 		Where("start_date >= NOW()"). // Only future events
-		Order("CASE WHEN location = ? THEN 1 WHEN host_id = ? THEN 2 ELSE 3 END", currentEvent.Location, currentEvent.HostID).
+		Where("location = ?", currentEvent.Location).
 		Limit(limit)
-
+	
 	err = query.Find(&events).Error
 	if err != nil {
 		return nil, err
+	}
+	
+	// If we don't have enough events from same location, get events from same host
+	if len(events) < limit {
+		var hostEvents []*models.Event
+		remaining := limit - len(events)
+		
+		hostQuery := r.db.Preload("Host").Preload("TicketTypes").
+			Where("id != ?", eventID).
+			Where("start_date >= NOW()").
+			Where("host_id = ?", currentEvent.HostID).
+			Where("location != ?", currentEvent.Location). // Exclude same location events we already got
+			Limit(remaining)
+		
+		err = hostQuery.Find(&hostEvents).Error
+		if err != nil {
+			return events, nil // Return what we have so far
+		}
+		
+		events = append(events, hostEvents...)
+	}
+	
+	// If we still don't have enough events, get any other future events
+	if len(events) < limit {
+		var otherEvents []*models.Event
+		remaining := limit - len(events)
+		
+		otherQuery := r.db.Preload("Host").Preload("TicketTypes").
+			Where("id != ?", eventID).
+			Where("start_date >= NOW()").
+			Where("location != ?", currentEvent.Location).
+			Where("host_id != ?", currentEvent.HostID).
+			Limit(remaining)
+		
+		err = otherQuery.Find(&otherEvents).Error
+		if err != nil {
+			return events, nil // Return what we have so far
+		}
+		
+		events = append(events, otherEvents...)
 	}
 
 	return events, nil
