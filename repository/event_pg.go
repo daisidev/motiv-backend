@@ -150,6 +150,35 @@ func (r *eventRepoPG) GetSearchSuggestions(query string, limit int) ([]string, e
 	return suggestions, nil
 }
 
+func (r *eventRepoPG) GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models.Event, error) {
+	// First get the current event to extract its properties
+	var currentEvent models.Event
+	err := r.db.Where("id = ?", eventID).First(&currentEvent).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var events []*models.Event
+	
+	// Find similar events based on:
+	// 1. Same location (highest priority)
+	// 2. Same host (medium priority) 
+	// 3. Similar tags (if available)
+	// Exclude the current event and limit results
+	query := r.db.Preload("Host").Preload("TicketTypes").
+		Where("id != ?", eventID).
+		Where("start_date >= NOW()"). // Only future events
+		Order("CASE WHEN location = ? THEN 1 WHEN host_id = ? THEN 2 ELSE 3 END", currentEvent.Location, currentEvent.HostID).
+		Limit(limit)
+
+	err = query.Find(&events).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
+}
+
 func (r *eventRepoPG) DeleteEvent(id uuid.UUID) error {
 	return r.db.Delete(&models.Event{}, id).Error
 }

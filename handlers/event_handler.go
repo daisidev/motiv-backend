@@ -375,3 +375,23 @@ func (h *EventHandler) GetSearchSuggestions(c *fiber.Ctx) error {
 
 	return c.JSON(suggestions)
 }
+
+// GetSimilarEvents handles getting events similar to a specific event
+func (h *EventHandler) GetSimilarEvents(c *fiber.Ctx) error {
+	eventID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event ID"})
+	}
+
+	limit, _ := strconv.Atoi(c.Query("limit", "3"))
+	if limit < 1 || limit > 10 {
+		limit = 3
+	}
+
+	events, err := h.eventService.GetSimilarEvents(eventID, limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get similar events"})
+	}
+
+	return c.JSON(events)
+}

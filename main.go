@@ -113,6 +113,7 @@ func main() {
 	event.Get("/", eventHandler.GetAllEvents)
 	event.Get("/suggestions", eventHandler.GetSearchSuggestions)
 	event.Get("/:id", eventHandler.GetEventByID)
+	event.Get("/:id/similar", eventHandler.GetSimilarEvents)
 	event.Get("/:id/reviews", reviewHandler.GetEventReviews)
 	event.Get("/:id/analytics", analyticsHandler.GetEventAnalytics)
 	event.Get("/:id/revenue", paymentHandler.GetEventRevenue)
