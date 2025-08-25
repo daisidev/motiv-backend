@@ -233,11 +233,11 @@ func (e *ZohoEmailService) generateTicketConfirmationContent(ticket *models.Tick
             {{end}}
         </div>
         
-        {{if .Ticket.QRCodeData}}
+        {{if .Ticket.QRCode}}
         <div class="qr-code">
             <h3>📱 Your QR Code</h3>
             <p>Show this QR code at the event entrance:</p>
-            <img src="data:image/png;base64,{{.Ticket.QRCodeData}}" alt="QR Code" style="max-width: 200px;">
+            <img src="data:image/png;base64,{{.Ticket.QRCode}}" alt="QR Code" style="max-width: 200px;">
         </div>
         {{end}}
         
