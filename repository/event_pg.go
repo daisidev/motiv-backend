@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -230,9 +231,14 @@ func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
 	// 3. Events with tickets sold
 	// 4. Shuffle the results to provide variety
 	
+	// First, let's check total count in database
+	var totalCount int64
+	r.db.Model(&models.Event{}).Count(&totalCount)
+	
 	err := r.db.Preload("Host").Preload("TicketTypes").
-		Where("start_date >= NOW()"). // Only future events
-		Where("status = ?", "active"). // Only active events
+		// Temporarily removed filters to show all events for testing
+		// Where("start_date >= NOW()"). // Only future events
+		// Where("status = ?", "active"). // Only active events
 		Order("RANDOM()"). // Shuffle the results
 		Limit(limit).
 		Find(&events).Error
@@ -240,6 +246,9 @@ func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
 	if err != nil {
 		return nil, err
 	}
+	
+	// Debug logging
+	fmt.Printf("GetPopularEvents: Total events in DB: %d, Requested limit: %d, Found: %d\n", totalCount, limit, len(events))
 	
 	return events, nil
 }

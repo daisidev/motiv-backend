@@ -408,5 +408,11 @@ func (h *EventHandler) GetPopularEvents(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get popular events"})
 	}
 
+	// Debug logging
+	log.Printf("Popular events request - limit: %d, found: %d events", limit, len(events))
+	for i, event := range events {
+		log.Printf("Event %d: ID=%s, Title=%s", i+1, event.ID.String(), event.Title)
+	}
+
 	return c.JSON(events)
 }
