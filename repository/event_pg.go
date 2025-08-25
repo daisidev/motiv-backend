@@ -249,6 +249,9 @@ func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
 	
 	// Debug logging
 	fmt.Printf("GetPopularEvents: Total events in DB: %d, Requested limit: %d, Found: %d\n", totalCount, limit, len(events))
+	for i, event := range events {
+		fmt.Printf("  Event %d: ID=%s, Title=%s, StartDate=%s\n", i+1, event.ID.String(), event.Title, event.StartDate.Format("2006-01-02"))
+	}
 	
 	return events, nil
 }
