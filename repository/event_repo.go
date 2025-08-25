@@ -13,6 +13,7 @@ type EventRepository interface {
 	GetAllEventsWithPagination(page, limit int, search, tags, location, eventType, dateFrom, dateTo string) ([]*models.Event, int, error)
 	GetSearchSuggestions(query string, limit int) ([]string, error)
 	GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models.Event, error)
+	GetPopularEvents(limit int) ([]*models.Event, error)
 	UpdateEvent(event *models.Event) error
 	DeleteEvent(id uuid.UUID) error
 }

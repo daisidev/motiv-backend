@@ -395,3 +395,18 @@ func (h *EventHandler) GetSimilarEvents(c *fiber.Ctx) error {
 
 	return c.JSON(events)
 }
+
+// GetPopularEvents handles getting popular events with shuffling
+func (h *EventHandler) GetPopularEvents(c *fiber.Ctx) error {
+	limit, _ := strconv.Atoi(c.Query("limit", "6"))
+	if limit < 1 || limit > 20 {
+		limit = 6
+	}
+
+	events, err := h.eventService.GetPopularEvents(limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get popular events"})
+	}
+
+	return c.JSON(events)
+}

@@ -111,6 +111,7 @@ func main() {
 	// Event routes
 	event := api.Group("/events")
 	event.Get("/", eventHandler.GetAllEvents)
+	event.Get("/popular", eventHandler.GetPopularEvents)
 	event.Get("/suggestions", eventHandler.GetSearchSuggestions)
 	event.Get("/:id", eventHandler.GetEventByID)
 	event.Get("/:id/similar", eventHandler.GetSimilarEvents)

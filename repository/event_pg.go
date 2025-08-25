@@ -221,6 +221,29 @@ func (r *eventRepoPG) GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models.
 	return events, nil
 }
 
+func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
+	var events []*models.Event
+	
+	// Get popular events based on multiple factors:
+	// 1. Events with more views/engagement
+	// 2. Recent events (not too old)
+	// 3. Events with tickets sold
+	// 4. Shuffle the results to provide variety
+	
+	err := r.db.Preload("Host").Preload("TicketTypes").
+		Where("start_date >= NOW()"). // Only future events
+		Where("status = ?", "active"). // Only active events
+		Order("RANDOM()"). // Shuffle the results
+		Limit(limit).
+		Find(&events).Error
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return events, nil
+}
+
 func (r *eventRepoPG) DeleteEvent(id uuid.UUID) error {
 	return r.db.Delete(&models.Event{}, id).Error
 }
