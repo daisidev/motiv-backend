@@ -70,3 +70,73 @@ func (r *userRepoPG) MarkPasswordResetTokenAsUsed(tokenID uuid.UUID) error {
 func (r *userRepoPG) UpdateUserPassword(userID uuid.UUID, hashedPassword string) error {
 	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("password", hashedPassword).Error
 }
+
+// Admin methods
+func (r *userRepoPG) GetPlatformStats() (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	// Total users
+	var totalUsers int64
+	r.db.Model(&models.User{}).Count(&totalUsers)
+	stats["total_users"] = totalUsers
+
+	// Users by role
+	var guestCount, hostCount, adminCount int64
+	r.db.Model(&models.User{}).Where("role = ?", models.GuestRole).Count(&guestCount)
+	r.db.Model(&models.User{}).Where("role = ?", models.HostRole).Count(&hostCount)
+	r.db.Model(&models.User{}).Where("role = ?", models.AdminRole).Count(&adminCount)
+	
+	stats["guest_users"] = guestCount
+	stats["host_users"] = hostCount
+	stats["admin_users"] = adminCount
+
+	// Total events
+	var totalEvents int64
+	r.db.Table("events").Count(&totalEvents)
+	stats["total_events"] = totalEvents
+
+	// Total tickets
+	var totalTickets int64
+	r.db.Table("tickets").Count(&totalTickets)
+	stats["total_tickets"] = totalTickets
+
+	// Newsletter subscribers
+	var newsletterSubscribers int64
+	r.db.Model(&models.User{}).Where("newsletter_subscribed = ?", true).Count(&newsletterSubscribers)
+	stats["newsletter_subscribers"] = newsletterSubscribers
+
+	return stats, nil
+}
+
+func (r *userRepoPG) GetAllUsersWithFilters(limit, offset int, search, roleFilter string) ([]*models.User, int64, error) {
+	var users []*models.User
+	var total int64
+
+	query := r.db.Model(&models.User{})
+
+	// Apply search filter
+	if search != "" {
+		query = query.Where("name ILIKE ? OR email ILIKE ? OR username ILIKE ?", 
+			"%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	// Apply role filter
+	if roleFilter != "" {
+		query = query.Where("role = ?", roleFilter)
+	}
+
+	// Get total count
+	query.Count(&total)
+
+	// Get paginated results
+	err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&users).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
+}
+
+func (r *userRepoPG) UpdateUserRole(userID uuid.UUID, role models.UserRole) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("role", role).Error
+}

@@ -62,6 +62,7 @@ func main() {
 	paymentHandler := handlers.NewPaymentHandler(paymentService, ticketService, eventService, userService, emailService)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 	attendeeHandler := handlers.NewAttendeeHandler(attendeeService, eventService)
+	adminHandler := handlers.NewAdminHandler(userService, paymentService, eventService, ticketService)
 
 	// Create Fiber app
 	app := fiber.New()
@@ -170,6 +171,16 @@ func main() {
 	ticket.Post("/purchase", ticketHandler.PurchaseTicket)
 	ticket.Post("/rsvp", ticketHandler.RSVPFreeEvent)
 	ticket.Post("/regenerate-qr", ticketHandler.RegenerateQRCodes) // Development endpoint
+
+	// Admin routes
+	admin := api.Group("/admin")
+	admin.Use(middleware.AuthRequired(jwtSecret))
+	admin.Use(middleware.RoleRequired(models.AdminRole))
+	admin.Get("/stats", adminHandler.GetDashboardStats)
+	admin.Get("/users", adminHandler.GetAllUsers)
+	admin.Get("/users/:userId", adminHandler.GetUserDetails)
+	admin.Put("/users/:userId/role", adminHandler.UpdateUserRole)
+	admin.Get("/transactions", adminHandler.GetAllTransactions)
 
 	// Start server
 	log.Fatal(app.Listen(":8080"))

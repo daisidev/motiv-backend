@@ -298,6 +298,7 @@ func (h *TicketHandler) RegenerateQRCodes(c *fiber.Ctx) error {
 		// Convert to base64 for storage/transmission
 		qrCodeBase64 := base64.StdEncoding.EncodeToString(qrCodeBytes)
 		ticket.QRCode = qrCodeBase64
+		ticket.QRData = qrData // Store the raw data string as well
 
 		// Update the ticket
 		if err := h.ticketService.UpdateTicket(ticket); err != nil {

@@ -21,6 +21,11 @@ type UserService interface {
 	GetPasswordResetToken(token string) (*models.PasswordResetToken, error)
 	MarkPasswordResetTokenAsUsed(tokenID uuid.UUID) error
 	UpdateUserPassword(userID uuid.UUID, newPassword string) error
+	
+	// Admin methods
+	GetPlatformStats() (map[string]interface{}, error)
+	GetAllUsersWithFilters(limit, offset int, search, roleFilter string) ([]*models.User, int64, error)
+	UpdateUserRole(userID uuid.UUID, role models.UserRole) error
 }
 
 type userService struct {
@@ -94,4 +99,17 @@ func (s *userService) UpdateUserPassword(userID uuid.UUID, newPassword string) e
 		return err
 	}
 	return s.userRepo.UpdateUserPassword(userID, string(hashedPassword))
+}
+
+// Admin methods
+func (s *userService) GetPlatformStats() (map[string]interface{}, error) {
+	return s.userRepo.GetPlatformStats()
+}
+
+func (s *userService) GetAllUsersWithFilters(limit, offset int, search, roleFilter string) ([]*models.User, int64, error) {
+	return s.userRepo.GetAllUsersWithFilters(limit, offset, search, roleFilter)
+}
+
+func (s *userService) UpdateUserRole(userID uuid.UUID, role models.UserRole) error {
+	return s.userRepo.UpdateUserRole(userID, role)
 }

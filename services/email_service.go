@@ -238,6 +238,13 @@ func (e *ZohoEmailService) generateTicketConfirmationContent(ticket *models.Tick
             <h3>📱 Your QR Code</h3>
             <p>Show this QR code at the event entrance:</p>
             <img src="data:image/png;base64,{{.Ticket.QRCode}}" alt="QR Code" style="max-width: 200px;">
+            {{if .Ticket.QRData}}
+            <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin: 15px 0; text-align: left;">
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #495057;">QR Code Data:</p>
+                <p style="font-family: monospace; font-size: 12px; word-break: break-all; margin: 0; color: #6c757d; background: white; padding: 8px; border-radius: 3px;">{{.Ticket.QRData}}</p>
+                <p style="margin: 10px 0 0 0; font-size: 11px; color: #6c757d;">You can also manually enter this code if QR scanning is not available.</p>
+            </div>
+            {{end}}
         </div>
         {{end}}
         
@@ -279,6 +286,11 @@ Attendee: {{.Ticket.AttendeeFullName}}
 Email: {{.Ticket.AttendeeEmail}}
 {{if .Ticket.AttendeePhone}}Phone: {{.Ticket.AttendeePhone}}{{end}}
 {{if .Ticket.PaymentReference}}Payment Reference: {{.Ticket.PaymentReference}}{{end}}
+{{if .Ticket.QRData}}
+
+QR CODE DATA: {{.Ticket.QRData}}
+(You can manually enter this code if QR scanning is not available)
+{{end}}
 
 Please save this email and bring your QR code to the event.
 

@@ -26,6 +26,9 @@ type PaymentService interface {
 	// Financial stats
 	GetHostEarnings(hostID uuid.UUID) (map[string]interface{}, error)
 	GetEventRevenue(eventID uuid.UUID) (float64, error)
+	
+	// Admin methods
+	GetAllTransactionsWithFilters(limit, offset int, status string) ([]*models.Payment, int64, error)
 }
 
 type paymentService struct {
@@ -182,4 +185,9 @@ func (s *paymentService) GetHostEarnings(hostID uuid.UUID) (map[string]interface
 
 func (s *paymentService) GetEventRevenue(eventID uuid.UUID) (float64, error) {
 	return s.paymentRepo.GetEventRevenue(eventID)
+}
+
+// Admin methods
+func (s *paymentService) GetAllTransactionsWithFilters(limit, offset int, status string) ([]*models.Payment, int64, error) {
+	return s.paymentRepo.GetAllTransactionsWithFilters(limit, offset, status)
 }

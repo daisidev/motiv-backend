@@ -16,4 +16,9 @@ type UserRepository interface {
 	GetPasswordResetToken(token string) (*models.PasswordResetToken, error)
 	MarkPasswordResetTokenAsUsed(tokenID uuid.UUID) error
 	UpdateUserPassword(userID uuid.UUID, hashedPassword string) error
+	
+	// Admin methods
+	GetPlatformStats() (map[string]interface{}, error)
+	GetAllUsersWithFilters(limit, offset int, search, roleFilter string) ([]*models.User, int64, error)
+	UpdateUserRole(userID uuid.UUID, role models.UserRole) error
 }

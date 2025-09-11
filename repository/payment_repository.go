@@ -26,6 +26,9 @@ type PaymentRepository interface {
 	GetHostEarnings(hostID uuid.UUID) (float64, error)
 	GetHostMonthlyEarnings(hostID uuid.UUID, year, month int) (float64, error)
 	GetEventRevenue(eventID uuid.UUID) (float64, error)
+	
+	// Admin methods
+	GetAllTransactionsWithFilters(limit, offset int, status string) ([]*models.Payment, int64, error)
 }
 
 type paymentRepoPG struct {
@@ -141,4 +144,28 @@ func (p *paymentRepoPG) GetEventRevenue(eventID uuid.UUID) (float64, error) {
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&revenue).Error
 	return revenue, err
+}
+
+// Admin methods
+func (p *paymentRepoPG) GetAllTransactionsWithFilters(limit, offset int, status string) ([]*models.Payment, int64, error) {
+	var payments []*models.Payment
+	var total int64
+
+	query := p.db.Model(&models.Payment{}).Preload("Event").Preload("User")
+
+	// Apply status filter
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	// Get total count
+	query.Count(&total)
+
+	// Get paginated results
+	err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&payments).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return payments, total, nil
 }

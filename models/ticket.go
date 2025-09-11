@@ -15,7 +15,8 @@ type Ticket struct {
 	User         User       `gorm:"foreignKey:UserID" json:"user"`
 	TicketTypeID uuid.UUID  `gorm:"type:uuid;not null" json:"ticket_type_id"`
 	TicketType   TicketType `gorm:"foreignKey:TicketTypeID" json:"ticket_type"`
-	QRCode       string     `json:"qr_code"`
+	QRCode       string     `json:"qr_code"`        // Base64 encoded QR code image
+	QRData       string     `json:"qr_data"`        // Raw QR code data string
 	PaymentReference string `gorm:"not null" json:"payment_reference"`
 	// Attendee information
 	AttendeeFullName string `gorm:"not null" json:"attendee_full_name"`
