@@ -297,7 +297,9 @@
                 <a href="#wishlist" class="nav-item">Wishlist</a>
                 <a href="#events" class="nav-item">Events</a>
                 <a href="#host" class="nav-item">Host Management</a>
-                <a href="#attendees" class="nav-item">Attendees</a>
+                <a href="#attendees" class="nav-item">Attendees & QR Codes</a>
+                <a href="#admin" class="nav-item">Admin Panel</a>
+                <a href="#newsletter" class="nav-item">Newsletter</a>
                 <a href="#payments" class="nav-item">Payments</a>
                 <a href="#reviews" class="nav-item">Reviews</a>
                 <a href="#financial" class="nav-item">Financial Data</a>
@@ -1178,3 +1180,411 @@
 </body>
 </html>
   
+        <
+!-- Newsletter Subscription Section -->
+        <div class="section" id="newsletter">
+            <div class="section-header">
+                <h2>Newsletter Subscription</h2>
+            </div>
+            <div class="section-content">
+                <p>The newsletter subscription feature allows users to opt-in to receive event updates and exclusive offers via email.</p>
+
+                <h3>User Signup with Newsletter</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/auth/signup</span>
+                </div>
+                <p>Enhanced signup endpoint now includes newsletter subscription option.</p>
+
+                <h4>Request Body (Updated)</h4>
+                <pre>{
+  <span class="json-key">"name"</span>: <span class="json-string">"John Doe"</span>,
+  <span class="json-key">"username"</span>: <span class="json-string">"johndoe"</span>,
+  <span class="json-key">"email"</span>: <span class="json-string">"john@example.com"</span>,
+  <span class="json-key">"password"</span>: <span class="json-string">"password123"</span>,
+  <span class="json-key">"confirmPassword"</span>: <span class="json-string">"password123"</span>,
+  <span class="json-key">"role"</span>: <span class="json-string">"host"</span>,
+  <span class="json-key">"newsletterSubscribed"</span>: <span class="json-boolean">true</span> <span class="json-comment">// New field</span>
+}</pre>
+
+                <h4>Response (Updated)</h4>
+                <pre>{
+  <span class="json-key">"token"</span>: <span class="json-string">"jwt_token_here"</span>,
+  <span class="json-key">"user"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-string">"uuid"</span>,
+    <span class="json-key">"name"</span>: <span class="json-string">"John Doe"</span>,
+    <span class="json-key">"username"</span>: <span class="json-string">"johndoe"</span>,
+    <span class="json-key">"email"</span>: <span class="json-string">"john@example.com"</span>,
+    <span class="json-key">"role"</span>: <span class="json-string">"host"</span>,
+    <span class="json-key">"newsletter_subscribed"</span>: <span class="json-boolean">true</span> <span class="json-comment">// New field</span>
+  }
+}</pre>
+
+                <div class="auth-note">
+                    <strong>Newsletter Features:</strong>
+                    <ul>
+                        <li>Users can opt-in during signup</li>
+                        <li>Newsletter status is included in all user responses</li>
+                        <li>Admin panel shows newsletter subscription statistics</li>
+                        <li>Email templates include newsletter preferences</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Code Enhancement Section -->
+        <div class="section" id="qr-codes">
+            <div class="section-header">
+                <h2>QR Code System (Enhanced)</h2>
+            </div>
+            <div class="section-content">
+                <p>The QR code system has been enhanced to provide production-ready functionality with real camera scanning and improved ticket management.</p>
+
+                <h3>QR Code Check-in</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/hosts/me/attendees/checkin</span>
+                </div>
+                <p>Check in attendees using QR code scanning (hosts only).</p>
+
+                <div class="auth-note">
+                    <strong>🔒 Authentication Required:</strong> Bearer token with host role
+                </div>
+
+                <h4>Request Body</h4>
+                <pre>{
+  <span class="json-key">"qrCode"</span>: <span class="json-string">"MOTIV-TICKET:uuid:uuid:uuid"</span>, <span class="json-comment">// QR code data or base64 image</span>
+  <span class="json-key">"eventId"</span>: <span class="json-string">"event-uuid"</span>
+}</pre>
+
+                <h4>Success Response</h4>
+                <pre>{
+  <span class="json-key">"success"</span>: <span class="json-boolean">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Successfully checked in!"</span>,
+  <span class="json-key">"attendee"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-string">"attendee-uuid"</span>,
+    <span class="json-key">"name"</span>: <span class="json-string">"John Doe"</span>,
+    <span class="json-key">"email"</span>: <span class="json-string">"john@example.com"</span>,
+    <span class="json-key">"event_title"</span>: <span class="json-string">"Amazing Event"</span>,
+    <span class="json-key">"ticket_type"</span>: <span class="json-string">"General Admission"</span>,
+    <span class="json-key">"status"</span>: <span class="json-string">"checked_in"</span>,
+    <span class="json-key">"check_in_time"</span>: <span class="json-string">"2024-01-15T10:30:00Z"</span>
+  },
+  <span class="json-key">"timestamp"</span>: <span class="json-string">"2024-01-15T10:30:00Z"</span>
+}</pre>
+
+                <h3>QR Code Regeneration (Development)</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="url">/api/v1/tickets/regenerate-qr</span>
+                </div>
+                <p>Regenerate QR codes for existing tickets (development endpoint).</p>
+
+                <h4>Response</h4>
+                <pre>{
+  <span class="json-key">"message"</span>: <span class="json-string">"Successfully updated QR codes for 5 tickets"</span>,
+  <span class="json-key">"updated"</span>: <span class="json-number">5</span>,
+  <span class="json-key">"total"</span>: <span class="json-number">10</span>
+}</pre>
+
+                <h3>Enhanced Ticket Response</h3>
+                <p>Ticket responses now include both QR code image and raw data:</p>
+                <pre>{
+  <span class="json-key">"id"</span>: <span class="json-string">"ticket-uuid"</span>,
+  <span class="json-key">"qr_code"</span>: <span class="json-string">"base64-encoded-png-image"</span>, <span class="json-comment">// For display</span>
+  <span class="json-key">"qr_data"</span>: <span class="json-string">"MOTIV-TICKET:ticket-id:event-id:user-id"</span>, <span class="json-comment">// For manual entry</span>
+  <span class="json-comment">// ... other ticket fields</span>
+}</pre>
+
+                <div class="auth-note">
+                    <strong>QR Code Features:</strong>
+                    <ul>
+                        <li>Real camera scanning with fallback to manual entry</li>
+                        <li>Base64 encoded QR code images for display</li>
+                        <li>Raw QR data string for manual verification</li>
+                        <li>Email notifications include both formats</li>
+                        <li>Structured QR data format: MOTIV-TICKET:ticketID:eventID:userID</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Panel Section -->
+        <div class="section" id="admin">
+            <div class="section-header">
+                <h2>Admin Panel</h2>
+            </div>
+            <div class="section-content">
+                <p>The admin panel provides comprehensive platform management capabilities for administrators.</p>
+
+                <div class="auth-note">
+                    <strong>🔒 Admin Access Required:</strong> All admin endpoints require authentication with admin role
+                </div>
+
+                <h3>Platform Statistics</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/admin/stats</span>
+                </div>
+                <p>Get comprehensive platform statistics and metrics.</p>
+
+                <h4>Response</h4>
+                <pre>{
+  <span class="json-key">"total_users"</span>: <span class="json-number">1250</span>,
+  <span class="json-key">"guest_users"</span>: <span class="json-number">800</span>,
+  <span class="json-key">"host_users"</span>: <span class="json-number">400</span>,
+  <span class="json-key">"admin_users"</span>: <span class="json-number">5</span>,
+  <span class="json-key">"total_events"</span>: <span class="json-number">350</span>,
+  <span class="json-key">"total_tickets"</span>: <span class="json-number">2800</span>,
+  <span class="json-key">"newsletter_subscribers"</span>: <span class="json-number">650</span>
+}</pre>
+
+                <h3>User Management</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/admin/users</span>
+                </div>
+                <p>Get paginated list of all users with filtering options.</p>
+
+                <h4>Query Parameters</h4>
+                <table class="params-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>page</td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td class="optional">Optional</td>
+                            <td>Page number (default: 1)</td>
+                        </tr>
+                        <tr>
+                            <td>limit</td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td class="optional">Optional</td>
+                            <td>Items per page (default: 20, max: 100)</td>
+                        </tr>
+                        <tr>
+                            <td>search</td>
+                            <td><span class="type-badge">string</span></td>
+                            <td class="optional">Optional</td>
+                            <td>Search by name, email, or username</td>
+                        </tr>
+                        <tr>
+                            <td>role</td>
+                            <td><span class="type-badge">string</span></td>
+                            <td class="optional">Optional</td>
+                            <td>Filter by role (guest, host, admin, superhost)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Response</h4>
+                <pre>{
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"id"</span>: <span class="json-string">"user-uuid"</span>,
+      <span class="json-key">"name"</span>: <span class="json-string">"John Doe"</span>,
+      <span class="json-key">"username"</span>: <span class="json-string">"johndoe"</span>,
+      <span class="json-key">"email"</span>: <span class="json-string">"john@example.com"</span>,
+      <span class="json-key">"role"</span>: <span class="json-string">"host"</span>,
+      <span class="json-key">"newsletter_subscribed"</span>: <span class="json-boolean">true</span>,
+      <span class="json-key">"created_at"</span>: <span class="json-string">"2024-01-01T00:00:00Z"</span>
+    }
+  ],
+  <span class="json-key">"total"</span>: <span class="json-number">1250</span>,
+  <span class="json-key">"page"</span>: <span class="json-number">1</span>,
+  <span class="json-key">"limit"</span>: <span class="json-number">20</span>,
+  <span class="json-key">"hasMore"</span>: <span class="json-boolean">true</span>
+}</pre>
+
+                <h3>User Details</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/admin/users/{userId}</span>
+                </div>
+                <p>Get detailed information about a specific user.</p>
+
+                <h4>Response</h4>
+                <pre>{
+  <span class="json-key">"user"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-string">"user-uuid"</span>,
+    <span class="json-key">"name"</span>: <span class="json-string">"John Doe"</span>,
+    <span class="json-key">"username"</span>: <span class="json-string">"johndoe"</span>,
+    <span class="json-key">"email"</span>: <span class="json-string">"john@example.com"</span>,
+    <span class="json-key">"role"</span>: <span class="json-string">"host"</span>,
+    <span class="json-key">"newsletter_subscribed"</span>: <span class="json-boolean">true</span>,
+    <span class="json-key">"created_at"</span>: <span class="json-string">"2024-01-01T00:00:00Z"</span>
+  },
+  <span class="json-key">"tickets"</span>: [<span class="json-comment">/* array of user's tickets */</span>],
+  <span class="json-key">"events"</span>: [<span class="json-comment">/* array of user's events (if host) */</span>]
+}</pre>
+
+                <h3>Update User Role</h3>
+                <div class="endpoint">
+                    <span class="method put">PUT</span>
+                    <span class="url">/api/v1/admin/users/{userId}/role</span>
+                </div>
+                <p>Update a user's role (admin only).</p>
+
+                <h4>Request Body</h4>
+                <pre>{
+  <span class="json-key">"role"</span>: <span class="json-string">"host"</span> <span class="json-comment">// guest, host, admin, superhost</span>
+}</pre>
+
+                <h3>Transaction Management</h3>
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <span class="url">/api/v1/admin/transactions</span>
+                </div>
+                <p>Get paginated list of all transactions with filtering.</p>
+
+                <h4>Query Parameters</h4>
+                <table class="params-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>page</td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td class="optional">Optional</td>
+                            <td>Page number (default: 1)</td>
+                        </tr>
+                        <tr>
+                            <td>limit</td>
+                            <td><span class="type-badge">integer</span></td>
+                            <td class="optional">Optional</td>
+                            <td>Items per page (default: 20, max: 100)</td>
+                        </tr>
+                        <tr>
+                            <td>status</td>
+                            <td><span class="type-badge">string</span></td>
+                            <td class="optional">Optional</td>
+                            <td>Filter by status (pending, completed, failed, cancelled)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Response</h4>
+                <pre>{
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"id"</span>: <span class="json-string">"transaction-uuid"</span>,
+      <span class="json-key">"reference"</span>: <span class="json-string">"PAY-12345678"</span>,
+      <span class="json-key">"amount"</span>: <span class="json-number">5000.00</span>,
+      <span class="json-key">"currency"</span>: <span class="json-string">"NGN"</span>,
+      <span class="json-key">"status"</span>: <span class="json-string">"completed"</span>,
+      <span class="json-key">"method"</span>: <span class="json-string">"paystack"</span>,
+      <span class="json-key">"created_at"</span>: <span class="json-string">"2024-01-15T10:00:00Z"</span>,
+      <span class="json-key">"processed_at"</span>: <span class="json-string">"2024-01-15T10:01:00Z"</span>,
+      <span class="json-key">"event"</span>: {
+        <span class="json-key">"id"</span>: <span class="json-string">"event-uuid"</span>,
+        <span class="json-key">"title"</span>: <span class="json-string">"Amazing Event"</span>
+      },
+      <span class="json-key">"user"</span>: {
+        <span class="json-key">"id"</span>: <span class="json-string">"user-uuid"</span>,
+        <span class="json-key">"name"</span>: <span class="json-string">"John Doe"</span>,
+        <span class="json-key">"email"</span>: <span class="json-string">"john@example.com"</span>
+      }
+    }
+  ],
+  <span class="json-key">"total"</span>: <span class="json-number">500</span>,
+  <span class="json-key">"page"</span>: <span class="json-number">1</span>,
+  <span class="json-key">"limit"</span>: <span class="json-number">20</span>,
+  <span class="json-key">"hasMore"</span>: <span class="json-boolean">true</span>
+}</pre>
+
+                <div class="auth-note">
+                    <strong>Admin Panel Features:</strong>
+                    <ul>
+                        <li>Platform statistics and metrics dashboard</li>
+                        <li>User management with search and filtering</li>
+                        <li>Role management for users</li>
+                        <li>Transaction monitoring and revenue tracking</li>
+                        <li>Newsletter subscription analytics</li>
+                        <li>Real-time data with pagination</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Codes Section -->
+        <div class="section" id="status-codes">
+            <div class="section-header">
+                <h2>HTTP Status Codes</h2>
+            </div>
+            <div class="section-content">
+                <div class="status-codes">
+                    <div class="status-code status-2xx">
+                        <h4>200 OK</h4>
+                        <p>Request successful</p>
+                    </div>
+                    <div class="status-code status-2xx">
+                        <h4>201 Created</h4>
+                        <p>Resource created successfully</p>
+                    </div>
+                    <div class="status-code status-4xx">
+                        <h4>400 Bad Request</h4>
+                        <p>Invalid request data</p>
+                    </div>
+                    <div class="status-code status-4xx">
+                        <h4>401 Unauthorized</h4>
+                        <p>Authentication required</p>
+                    </div>
+                    <div class="status-code status-4xx">
+                        <h4>403 Forbidden</h4>
+                        <p>Insufficient permissions</p>
+                    </div>
+                    <div class="status-code status-4xx">
+                        <h4>404 Not Found</h4>
+                        <p>Resource not found</p>
+                    </div>
+                    <div class="status-code status-5xx">
+                        <h4>500 Internal Server Error</h4>
+                        <p>Server error occurred</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
+
+    <script>
+        // Show/hide back to top button
+        window.addEventListener('scroll', function() {
+            const backToTop = document.querySelector('.back-to-top');
+            if (window.pageYOffset > 300) {
+                backToTop.style.display = 'block';
+            } else {
+                backToTop.style.display = 'none';
+            }
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

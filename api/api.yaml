@@ -1078,18 +1078,249 @@ paths:
                 eventId:
                   type: string
                   format: uuid
-                attendeeData:
-                  $ref: '#/components/schemas/AttendeeDataRequest'
+                attendeeFullName:
+                  type: string
+                attendeeEmail:
+                  type: string
+                  format: email
+                attendeePhone:
+                  type: string
               required:
                 - eventId
-                - attendeeData
+                - attendeeFullName
+                - attendeeEmail
+                - attendeePhone
       responses:
         '201':
           description: RSVP successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TicketResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
+                  ticket:
+                    $ref: '#/components/schemas/TicketResponse'
+
+  /tickets/regenerate-qr:
+    post:
+      summary: Regenerate QR codes for user's tickets (Development endpoint)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: QR codes regenerated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  updated:
+                    type: integer
+                  total:
+                    type: integer
+
+  # Admin endpoints
+  /admin/stats:
+    get:
+      summary: Get platform statistics (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Platform statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformStats'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/users:
+    get:
+      summary: Get all users with filtering (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, email, or username
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [guest, host, admin, superhost]
+          description: Filter by user role
+      responses:
+        '200':
+          description: Paginated list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminUserResponse'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  hasMore:
+                    type: boolean
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/users/{userId}:
+    get:
+      summary: Get detailed user information (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed user information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/AdminUserResponse'
+                  tickets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TicketResponse'
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventResponse'
+        '403':
+          description: Admin access required
+        '404':
+          description: User not found
+
+  /admin/users/{userId}/role:
+    put:
+      summary: Update user role (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: [guest, host, admin, superhost]
+              required:
+                - role
+      responses:
+        '200':
+          description: User role updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '403':
+          description: Admin access required
+        '404':
+          description: User not found
+
+  /admin/transactions:
+    get:
+      summary: Get all transactions with filtering (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed, failed, cancelled]
+          description: Filter by transaction status
+      responses:
+        '200':
+          description: Paginated list of transactions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminTransactionResponse'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  hasMore:
+                    type: boolean
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   securitySchemes:
@@ -1125,6 +1356,9 @@ components:
         role:
           type: string
           enum: [guest, host, admin, superhost]
+        newsletter_subscribed:
+          type: boolean
+          description: Whether user has subscribed to newsletter
 
     SignupRequest:
       type: object
@@ -1154,6 +1388,10 @@ components:
           type: string
           enum: [guest, host]
           default: guest
+        newsletterSubscribed:
+          type: boolean
+          default: false
+          description: Whether user wants to subscribe to newsletter
 
     LoginRequest:
       type: object
@@ -1184,523 +1422,5 @@ components:
           type: string
           format: email
 
-    ResetPasswordRequest:
-      type: object
-      required:
-        - token
-        - newPassword
-        - confirmPassword
-      properties:
-        token:
-          type: string
-        newPassword:
-          type: string
-          minLength: 6
-        confirmPassword:
-          type: string
 
-    UpdateUserRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        avatar:
-          type: string
 
-    # Event Schemas
-    EventResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        description:
-          type: string
-        start_date:
-          type: string
-          format: date-time
-        start_time:
-          type: string
-        end_time:
-          type: string
-        location:
-          type: string
-        manual_description:
-          type: string
-        latitude:
-          type: number
-          format: float
-        longitude:
-          type: number
-          format: float
-        place_id:
-          type: string
-        tags:
-          type: array
-          items:
-            type: string
-        banner_image_url:
-          type: string
-        event_type:
-          type: string
-          enum: [ticketed, free]
-        host_id:
-          type: string
-          format: uuid
-        host:
-          $ref: '#/components/schemas/UserResponse'
-        ticket_types:
-          type: array
-          items:
-            $ref: '#/components/schemas/TicketTypeResponse'
-        status:
-          type: string
-          enum: [draft, active, cancelled]
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    CreateEventRequest:
-      type: object
-      required:
-        - title
-        - eventType
-        - startDate
-        - startTime
-        - endTime
-        - location
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        eventType:
-          type: string
-          enum: [ticketed, free]
-        status:
-          type: string
-          enum: [draft, active, cancelled]
-          default: active
-        startDate:
-          type: string
-          format: date
-        startTime:
-          type: string
-        endTime:
-          type: string
-        location:
-          type: string
-        locationData:
-          $ref: '#/components/schemas/LocationDataRequest'
-        tags:
-          type: array
-          items:
-            type: string
-        bannerImageURL:
-          type: string
-        ticketTypes:
-          type: array
-          items:
-            $ref: '#/components/schemas/CreateTicketTypeRequest'
-
-    LocationDataRequest:
-      type: object
-      required:
-        - address
-        - coordinates
-      properties:
-        address:
-          type: string
-        manualDescription:
-          type: string
-        coordinates:
-          $ref: '#/components/schemas/CoordinatesRequest'
-        placeId:
-          type: string
-
-    CoordinatesRequest:
-      type: object
-      required:
-        - lat
-        - lng
-      properties:
-        lat:
-          type: number
-          format: float
-        lng:
-          type: number
-          format: float
-
-    CreateTicketTypeRequest:
-      type: object
-      required:
-        - name
-        - price
-        - totalQuantity
-      properties:
-        name:
-          type: string
-        price:
-          type: number
-          minimum: 0
-        description:
-          type: string
-        totalQuantity:
-          type: integer
-          minimum: 1
-
-    # Ticket Schemas
-    TicketTypeResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        eventId:
-          type: string
-          format: uuid
-        name:
-          type: string
-        price:
-          type: number
-        description:
-          type: string
-        total_quantity:
-          type: integer
-        sold_quantity:
-          type: integer
-        available_quantity:
-          type: integer
-
-    TicketResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        eventId:
-          type: string
-          format: uuid
-        event:
-          $ref: '#/components/schemas/EventResponse'
-        ticketTypeId:
-          type: string
-          format: uuid
-        ticketType:
-          $ref: '#/components/schemas/TicketTypeResponse'
-        qrCode:
-          type: string
-        attendeeData:
-          $ref: '#/components/schemas/AttendeeDataRequest'
-        purchasedAt:
-          type: string
-          format: date-time
-
-    PurchaseTicketRequest:
-      type: object
-      required:
-        - ticketTypeId
-        - quantity
-      properties:
-        ticketTypeId:
-          type: string
-          format: uuid
-        quantity:
-          type: integer
-          minimum: 1
-
-    # Payment Schemas
-    PaymentInitiationRequest:
-      type: object
-      required:
-        - eventId
-        - email
-        - attendeeData
-        - ticketDetails
-      properties:
-        eventId:
-          type: string
-          format: uuid
-        email:
-          type: string
-          format: email
-        attendeeData:
-          $ref: '#/components/schemas/AttendeeDataRequest'
-        attendees:
-          type: array
-          items:
-            $ref: '#/components/schemas/AttendeeDataRequest'
-        ticketDetails:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/TicketDetailRequest'
-
-    AttendeeDataRequest:
-      type: object
-      required:
-        - fullName
-        - email
-        - phone
-      properties:
-        fullName:
-          type: string
-        email:
-          type: string
-          format: email
-        phone:
-          type: string
-
-    TicketDetailRequest:
-      type: object
-      required:
-        - ticketTypeId
-        - ticketTypeName
-        - quantity
-        - price
-      properties:
-        ticketTypeId:
-          type: string
-          format: uuid
-        ticketTypeName:
-          type: string
-        quantity:
-          type: integer
-          minimum: 1
-        price:
-          type: number
-          minimum: 0
-
-    PaymentInitiationResponse:
-      type: object
-      properties:
-        reference:
-          type: string
-        amount:
-          type: integer
-          description: Amount in kobo
-        paystackUrl:
-          type: string
-        publicKey:
-          type: string
-        email:
-          type: string
-        currency:
-          type: string
-
-    PaystackWebhookEvent:
-      type: object
-      properties:
-        event:
-          type: string
-        data:
-          type: object
-          properties:
-            reference:
-              type: string
-            amount:
-              type: integer
-            currency:
-              type: string
-            status:
-              type: string
-            message:
-              type: string
-            customer:
-              type: object
-              properties:
-                email:
-                  type: string
-            metadata:
-              type: object
-              properties:
-                eventId:
-                  type: string
-                attendeeData:
-                  $ref: '#/components/schemas/AttendeeDataRequest'
-                ticketDetails:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/TicketDetailRequest'
-
-    # Review Schemas
-    ReviewResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        eventId:
-          type: string
-          format: uuid
-        userId:
-          type: string
-          format: uuid
-        user:
-          $ref: '#/components/schemas/UserResponse'
-        rating:
-          type: integer
-          minimum: 1
-          maximum: 5
-        comment:
-          type: string
-        helpful:
-          type: integer
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    CreateReviewRequest:
-      type: object
-      required:
-        - eventId
-        - rating
-      properties:
-        eventId:
-          type: string
-          format: uuid
-        rating:
-          type: integer
-          minimum: 1
-          maximum: 5
-        comment:
-          type: string
-
-    UpdateReviewRequest:
-      type: object
-      properties:
-        rating:
-          type: integer
-          minimum: 1
-          maximum: 5
-        comment:
-          type: string
-
-    # Attendee Schemas
-    AttendeeResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        email:
-          type: string
-        phone:
-          type: string
-        eventTitle:
-          type: string
-        ticketType:
-          type: string
-        purchaseDate:
-          type: string
-        amount:
-          type: number
-        status:
-          type: string
-          enum: [pending, confirmed, checked_in, cancelled]
-        checkInTime:
-          type: string
-          format: date-time
-
-    AttendeeListResponse:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/AttendeeResponse'
-        total:
-          type: integer
-        page:
-          type: integer
-        limit:
-          type: integer
-        hasMore:
-          type: boolean
-        stats:
-          type: object
-          additionalProperties:
-            type: integer
-
-    # Payment & Payout Schemas
-    Payout:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        hostId:
-          type: string
-          format: uuid
-        eventId:
-          type: string
-          format: uuid
-        amount:
-          type: number
-        currency:
-          type: string
-        status:
-          type: string
-          enum: [pending, completed, failed, refunded]
-        method:
-          type: string
-          enum: [bank_transfer, card, wallet]
-        reference:
-          type: string
-        processedAt:
-          type: string
-          format: date-time
-        payoutDate:
-          type: string
-          format: date-time
-
-    HostEarnings:
-      type: object
-      properties:
-        totalEarnings:
-          type: number
-        pendingPayout:
-          type: number
-        lastPayout:
-          type: number
-
-    # Analytics Schemas
-    EventAnalytics:
-      type: object
-      properties:
-        totalViews:
-          type: integer
-        uniqueViews:
-          type: integer
-        ticketsSold:
-          type: integer
-        revenue:
-          type: number
-        conversionRate:
-          type: number
-        wishlistAdds:
-          type: integer
-
-    HostAnalytics:
-      type: object
-      properties:
-        totalEvents:
-          type: integer
-        totalRevenue:
-          type: number
-        totalAttendees:
-          type: integer
-        totalViews:
-          type: integer
-        averageRating:
-          type: number
