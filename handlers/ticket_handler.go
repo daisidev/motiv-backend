@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/base64"
+	"fmt"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -8,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/hidenkeys/motiv-backend/services"
+	"github.com/skip2/go-qrcode"
 )
 
 // TicketHandler handles ticket-related requests
@@ -252,4 +255,69 @@ func (h *TicketHandler) RSVPFreeEvent(c *fiber.Ctx) error {
 		"message": "RSVP successful",
 		"ticket":  ticket,
 	})
+}
+
+// RegenerateQRCodes regenerates QR codes for all tickets (admin/development endpoint)
+func (h *TicketHandler) RegenerateQRCodes(c *fiber.Ctx) error {
+	// This is a development/admin endpoint to update existing tickets with proper QR codes
+	log.Printf("🔄 QR REGENERATION: Starting QR code regeneration process")
+
+	// Get all tickets (you might want to add pagination for large datasets)
+	// For now, we'll get tickets by user to test
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	userID, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse user ID"})
+	}
+
+	tickets, err := h.ticketService.GetTicketsByUserID(userID)
+	if err != nil {
+		log.Printf("❌ QR REGENERATION ERROR: Failed to get tickets: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get tickets"})
+	}
+
+	updated := 0
+	for _, ticket := range tickets {
+		// Check if ticket already has a proper QR code (base64 encoded image)
+		if len(ticket.QRCode) > 100 && !contains(ticket.QRCode, "MOTIV-TICKET:") {
+			// Already has a base64 QR code, skip
+			continue
+		}
+
+		// Generate new QR code
+		qrData := fmt.Sprintf("MOTIV-TICKET:%s:%s:%s", ticket.ID.String(), ticket.EventID.String(), ticket.UserID.String())
+		
+		// Generate QR code image as base64 string
+		qrCodeBytes, err := qrcode.Encode(qrData, qrcode.Medium, 256)
+		if err != nil {
+			log.Printf("❌ QR REGENERATION ERROR: Failed to generate QR code for ticket %s: %v", ticket.ID.String(), err)
+			continue
+		}
+		
+		// Convert to base64 for storage/transmission
+		qrCodeBase64 := base64.StdEncoding.EncodeToString(qrCodeBytes)
+		ticket.QRCode = qrCodeBase64
+
+		// Update the ticket
+		if err := h.ticketService.UpdateTicket(ticket); err != nil {
+			log.Printf("❌ QR REGENERATION ERROR: Failed to update ticket %s: %v", ticket.ID.String(), err)
+			continue
+		}
+
+		updated++
+		log.Printf("✅ QR UPDATED: Updated QR code for ticket %s", ticket.ID.String())
+	}
+
+	log.Printf("🎉 QR REGENERATION COMPLETE: Updated %d tickets", updated)
+	return c.JSON(fiber.Map{
+		"message": fmt.Sprintf("Successfully updated QR codes for %d tickets", updated),
+		"updated": updated,
+		"total":   len(tickets),
+	})
+}
+
+// Helper function to check if string contains substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && s[:len(substr)] == substr
 }

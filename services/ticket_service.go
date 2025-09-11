@@ -1,18 +1,22 @@
 package services
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/hidenkeys/motiv-backend/repository"
+	"github.com/skip2/go-qrcode"
 )
 
 type TicketService interface {
 	PurchaseTicket(ticket *models.Ticket) error
 	CreateTicketWithQR(ticket *models.Ticket) error
+	UpdateTicket(ticket *models.Ticket) error
 	GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, error)
 	GetTicketByID(id uuid.UUID) (*models.Ticket, error)
+	DecodeQRData(qrData string) (ticketID, eventID, userID uuid.UUID, err error)
 
 	// Ticket Type methods
 	CreateTicketType(ticketType *models.TicketType) error
@@ -56,9 +60,18 @@ func (s *ticketService) CreateTicketWithQR(ticket *models.Ticket) error {
 		return fmt.Errorf("failed to create ticket: %w", err)
 	}
 
-	// Now generate QR code data with the actual ticket ID
+	// Generate QR code data with the actual ticket ID
 	qrData := fmt.Sprintf("MOTIV-TICKET:%s:%s:%s", ticket.ID.String(), ticket.EventID.String(), ticket.UserID.String())
-	ticket.QRCode = qrData
+	
+	// Generate QR code image as base64 string
+	qrCodeBytes, err := qrcode.Encode(qrData, qrcode.Medium, 256)
+	if err != nil {
+		return fmt.Errorf("failed to generate QR code image: %w", err)
+	}
+	
+	// Convert to base64 for storage/transmission
+	qrCodeBase64 := base64.StdEncoding.EncodeToString(qrCodeBytes)
+	ticket.QRCode = qrCodeBase64
 
 	// Update the ticket with the QR code
 	err = s.ticketRepo.UpdateTicket(ticket)
@@ -94,6 +107,10 @@ func (s *ticketService) GetTicketsByUserID(userID uuid.UUID) ([]*models.Ticket, 
 	return s.ticketRepo.GetTicketsByUserID(userID)
 }
 
+func (s *ticketService) UpdateTicket(ticket *models.Ticket) error {
+	return s.ticketRepo.UpdateTicket(ticket)
+}
+
 func (s *ticketService) GetTicketByID(id uuid.UUID) (*models.Ticket, error) {
 	return s.ticketRepo.GetTicketByID(id)
 }
@@ -105,6 +122,46 @@ func (s *ticketService) CreateTicketType(ticketType *models.TicketType) error {
 
 func (s *ticketService) GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error) {
 	return s.ticketRepo.GetTicketTypesByEventID(eventID)
+}
+
+// DecodeQRData decodes QR code data to extract ticket information
+func (s *ticketService) DecodeQRData(qrData string) (ticketID, eventID, userID uuid.UUID, err error) {
+	// QR data format: "MOTIV-TICKET:{ticketID}:{eventID}:{userID}"
+	parts := fmt.Sprintf("%s", qrData)
+	
+	// Split by colon
+	segments := make([]string, 0)
+	current := ""
+	for _, char := range parts {
+		if char == ':' {
+			segments = append(segments, current)
+			current = ""
+		} else {
+			current += string(char)
+		}
+	}
+	segments = append(segments, current) // Add the last segment
+	
+	if len(segments) != 4 || segments[0] != "MOTIV-TICKET" {
+		return uuid.Nil, uuid.Nil, uuid.Nil, fmt.Errorf("invalid QR code format")
+	}
+	
+	ticketID, err = uuid.Parse(segments[1])
+	if err != nil {
+		return uuid.Nil, uuid.Nil, uuid.Nil, fmt.Errorf("invalid ticket ID in QR code")
+	}
+	
+	eventID, err = uuid.Parse(segments[2])
+	if err != nil {
+		return uuid.Nil, uuid.Nil, uuid.Nil, fmt.Errorf("invalid event ID in QR code")
+	}
+	
+	userID, err = uuid.Parse(segments[3])
+	if err != nil {
+		return uuid.Nil, uuid.Nil, uuid.Nil, fmt.Errorf("invalid user ID in QR code")
+	}
+	
+	return ticketID, eventID, userID, nil
 }
 
 // RefreshTicketEventData refreshes event data for tickets that might have missing relationships

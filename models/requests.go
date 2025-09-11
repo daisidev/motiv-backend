@@ -91,12 +91,13 @@ type TicketTypeResponse struct {
 
 // SignupRequest represents the request payload for user registration
 type SignupRequest struct {
-	Name            string   `json:"name" validate:"required"`
-	Username        string   `json:"username" validate:"required,min=3,max=30"`
-	Email           string   `json:"email" validate:"required,email"`
-	Password        string   `json:"password" validate:"required,min=6"`
-	ConfirmPassword string   `json:"confirmPassword" validate:"required"`
-	Role            UserRole `json:"role,omitempty"` // Optional role, defaults to guest
+	Name                 string   `json:"name" validate:"required"`
+	Username             string   `json:"username" validate:"required,min=3,max=30"`
+	Email                string   `json:"email" validate:"required,email"`
+	Password             string   `json:"password" validate:"required,min=6"`
+	ConfirmPassword      string   `json:"confirmPassword" validate:"required"`
+	Role                 UserRole `json:"role,omitempty"` // Optional role, defaults to guest
+	NewsletterSubscribed bool     `json:"newsletterSubscribed,omitempty"` // Optional newsletter subscription
 }
 
 // LoginRequest represents the request payload for user login
@@ -122,12 +123,13 @@ type GoogleUser struct {
 
 // UserResponse represents the response structure for users (to avoid password exposure)
 type UserResponse struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	Username string    `json:"username"`
-	Email    string    `json:"email"`
-	Avatar   string    `json:"avatar"`
-	Role     string    `json:"role"`
+	ID                   uuid.UUID `json:"id"`
+	Name                 string    `json:"name"`
+	Username             string    `json:"username"`
+	Email                string    `json:"email"`
+	Avatar               string    `json:"avatar"`
+	Role                 string    `json:"role"`
+	NewsletterSubscribed bool      `json:"newsletter_subscribed"`
 }
 
 // PaymentInitiationRequest represents the request to initiate payment

@@ -137,11 +137,12 @@ func (h *AuthHandler) Signup(c *fiber.Ctx) error {
 
 	// Create user model from request (trim whitespace)
 	newUser := models.User{
-		Name:     strings.TrimSpace(signupReq.Name),
-		Username: strings.TrimSpace(signupReq.Username),
-		Email:    strings.ToLower(strings.TrimSpace(signupReq.Email)), // Normalize email to lowercase
-		Password: signupReq.Password,                                  // Don't trim password as spaces might be intentional
-		Role:     role,
+		Name:                 strings.TrimSpace(signupReq.Name),
+		Username:             strings.TrimSpace(signupReq.Username),
+		Email:                strings.ToLower(strings.TrimSpace(signupReq.Email)), // Normalize email to lowercase
+		Password:             signupReq.Password,                                  // Don't trim password as spaces might be intentional
+		Role:                 role,
+		NewsletterSubscribed: signupReq.NewsletterSubscribed,
 	}
 
 	if err := h.userService.CreateUser(&newUser); err != nil {
@@ -173,12 +174,13 @@ func (h *AuthHandler) Signup(c *fiber.Ctx) error {
 
 	// Return user response with token (same as login)
 	userResponse := models.UserResponse{
-		ID:       newUser.ID,
-		Name:     newUser.Name,
-		Username: newUser.Username,
-		Email:    newUser.Email,
-		Avatar:   newUser.Avatar,
-		Role:     string(newUser.Role),
+		ID:                   newUser.ID,
+		Name:                 newUser.Name,
+		Username:             newUser.Username,
+		Email:                newUser.Email,
+		Avatar:               newUser.Avatar,
+		Role:                 string(newUser.Role),
+		NewsletterSubscribed: newUser.NewsletterSubscribed,
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -229,12 +231,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 	// Return user data with token
 	userResponse := models.UserResponse{
-		ID:       user.ID,
-		Name:     user.Name,
-		Username: user.Username,
-		Email:    user.Email,
-		Avatar:   user.Avatar,
-		Role:     string(user.Role),
+		ID:                   user.ID,
+		Name:                 user.Name,
+		Username:             user.Username,
+		Email:                user.Email,
+		Avatar:               user.Avatar,
+		Role:                 string(user.Role),
+		NewsletterSubscribed: user.NewsletterSubscribed,
 	}
 
 	return c.JSON(fiber.Map{
@@ -277,12 +280,13 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 		}
 
 		userResponse := models.UserResponse{
-			ID:       existingUser.ID,
-			Name:     existingUser.Name,
-			Username: existingUser.Username,
-			Email:    existingUser.Email,
-			Avatar:   existingUser.Avatar,
-			Role:     string(existingUser.Role),
+			ID:                   existingUser.ID,
+			Name:                 existingUser.Name,
+			Username:             existingUser.Username,
+			Email:                existingUser.Email,
+			Avatar:               existingUser.Avatar,
+			Role:                 string(existingUser.Role),
+			NewsletterSubscribed: existingUser.NewsletterSubscribed,
 		}
 
 		return c.JSON(fiber.Map{
@@ -309,12 +313,13 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 
 	// Create new user
 	newUser := models.User{
-		Name:     firebaseUserInfo.Name,
-		Username: username,
-		Email:    strings.ToLower(strings.TrimSpace(firebaseUserInfo.Email)),
-		Password: "", // No password for Google OAuth users
-		Avatar:   firebaseUserInfo.Picture,
-		Role:     models.HostRole, // Set to host role like normal signup
+		Name:                 firebaseUserInfo.Name,
+		Username:             username,
+		Email:                strings.ToLower(strings.TrimSpace(firebaseUserInfo.Email)),
+		Password:             "", // No password for Google OAuth users
+		Avatar:               firebaseUserInfo.Picture,
+		Role:                 models.HostRole, // Set to host role like normal signup
+		NewsletterSubscribed: false, // Default to false for Google OAuth users
 	}
 
 	if err := h.userService.CreateUser(&newUser); err != nil {
@@ -342,12 +347,13 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	userResponse := models.UserResponse{
-		ID:       newUser.ID,
-		Name:     newUser.Name,
-		Username: newUser.Username,
-		Email:    newUser.Email,
-		Avatar:   newUser.Avatar,
-		Role:     string(newUser.Role),
+		ID:                   newUser.ID,
+		Name:                 newUser.Name,
+		Username:             newUser.Username,
+		Email:                newUser.Email,
+		Avatar:               newUser.Avatar,
+		Role:                 string(newUser.Role),
+		NewsletterSubscribed: newUser.NewsletterSubscribed,
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

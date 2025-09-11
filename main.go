@@ -169,6 +169,7 @@ func main() {
 	ticket.Use(middleware.AuthRequired(jwtSecret))
 	ticket.Post("/purchase", ticketHandler.PurchaseTicket)
 	ticket.Post("/rsvp", ticketHandler.RSVPFreeEvent)
+	ticket.Post("/regenerate-qr", ticketHandler.RegenerateQRCodes) // Development endpoint
 
 	// Start server
 	log.Fatal(app.Listen(":8080"))

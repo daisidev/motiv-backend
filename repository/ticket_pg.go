@@ -96,6 +96,15 @@ func (r *ticketRepoPG) UpdateSoldQuantity(ticketTypeID uuid.UUID, quantity int) 
 		Update("sold_quantity", gorm.Expr("sold_quantity + ?", quantity)).Error
 }
 
+func (r *ticketRepoPG) GetByID(id uuid.UUID) (*models.Ticket, error) {
+	var ticket models.Ticket
+	err := r.db.Preload("Event").Preload("TicketType").Where("id = ?", id).First(&ticket).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ticket, nil
+}
+
 func (r *ticketRepoPG) GetByQRCode(qrCode string) (*models.Ticket, error) {
 	var ticket models.Ticket
 	err := r.db.Preload("Event").Preload("TicketType").Where("qr_code = ?", qrCode).First(&ticket).Error

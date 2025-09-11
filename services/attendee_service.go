@@ -125,14 +125,42 @@ func (s *attendeeService) transformAttendeesToResponse(attendees []models.Attend
 }
 
 func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uuid.UUID) (*CheckInResult, error) {
-	// Find ticket by QR code
+	// Try to find ticket by QR code directly first (for base64 encoded QR codes)
 	ticket, err := s.ticketRepo.GetByQRCode(qrCode)
 	if err != nil {
-		return &CheckInResult{
-			Success:   false,
-			Message:   "Invalid QR Code - Ticket not found",
-			Timestamp: time.Now(),
-		}, nil
+		// If not found, try to decode as QR data string
+		// This handles both old format strings and new base64 QR codes
+		// For production, we should decode the QR data from the string
+		// For now, we'll try to parse it as a QR data string
+		if len(qrCode) > 20 && qrCode[:12] == "MOTIV-TICKET" {
+			// This is QR data string, try to find ticket by parsing the data
+			parts := make([]string, 0)
+			current := ""
+			for _, char := range qrCode {
+				if char == ':' {
+					parts = append(parts, current)
+					current = ""
+				} else {
+					current += string(char)
+				}
+			}
+			parts = append(parts, current)
+			
+			if len(parts) >= 4 {
+				ticketIDStr := parts[1]
+				if ticketID, parseErr := uuid.Parse(ticketIDStr); parseErr == nil {
+					ticket, err = s.ticketRepo.GetByID(ticketID)
+				}
+			}
+		}
+		
+		if err != nil {
+			return &CheckInResult{
+				Success:   false,
+				Message:   "Invalid QR Code - Ticket not found",
+				Timestamp: time.Now(),
+			}, nil
+		}
 	}
 
 	// Verify ticket belongs to the correct event
@@ -223,7 +251,7 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 			EventTitle:  updatedAttendee.Event.Title,
 			TicketType:  ticket.TicketType.Name,
 			Status:      string(updatedAttendee.Status),
-			CheckInTime: updatedAttendee.CheckedInAt,
+			CheckInTime: updatedAttendee.CheckedInTime,
 		},
 		Timestamp: time.Now(),
 	}, nil
