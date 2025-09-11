@@ -145,7 +145,7 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 				}
 			}
 			parts = append(parts, current)
-			
+
 			if len(parts) >= 4 {
 				ticketIDStr := parts[1]
 				if ticketID, parseErr := uuid.Parse(ticketIDStr); parseErr == nil {
@@ -153,7 +153,7 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 				}
 			}
 		}
-		
+
 		if err != nil {
 			return &CheckInResult{
 				Success:   false,
@@ -251,7 +251,7 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 			EventTitle:  updatedAttendee.Event.Title,
 			TicketType:  ticket.TicketType.Name,
 			Status:      string(updatedAttendee.Status),
-			CheckInTime: updatedAttendee.CheckedInTime,
+			CheckInTime: updatedAttendee.CheckedInAt,
 		},
 		Timestamp: time.Now(),
 	}, nil

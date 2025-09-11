@@ -32,7 +32,7 @@ func (h *AdminHandler) GetDashboardStats(c *fiber.Ctx) error {
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	role := claims["role"].(string)
-	
+
 	if role != string(models.AdminRole) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Admin access required"})
 	}
@@ -51,7 +51,7 @@ func (h *AdminHandler) GetAllUsers(c *fiber.Ctx) error {
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	role := claims["role"].(string)
-	
+
 	if role != string(models.AdminRole) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Admin access required"})
 	}
@@ -91,7 +91,7 @@ func (h *AdminHandler) GetAllTransactions(c *fiber.Ctx) error {
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	role := claims["role"].(string)
-	
+
 	if role != string(models.AdminRole) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Admin access required"})
 	}
@@ -130,7 +130,7 @@ func (h *AdminHandler) GetUserDetails(c *fiber.Ctx) error {
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	role := claims["role"].(string)
-	
+
 	if role != string(models.AdminRole) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Admin access required"})
 	}
@@ -147,9 +147,9 @@ func (h *AdminHandler) GetUserDetails(c *fiber.Ctx) error {
 
 	// Get user's tickets
 	tickets, _ := h.ticketService.GetTicketsByUserID(userID)
-	
+
 	// Get user's events if they're a host
-	var events []models.Event
+	var events []*models.Event
 	if userDetails.Role == models.HostRole || userDetails.Role == models.AdminRole {
 		events, _ = h.eventService.GetEventsByHostID(userID)
 	}
@@ -167,7 +167,7 @@ func (h *AdminHandler) UpdateUserRole(c *fiber.Ctx) error {
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	role := claims["role"].(string)
-	
+
 	if role != string(models.AdminRole) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Admin access required"})
 	}
