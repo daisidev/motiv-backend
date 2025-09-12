@@ -1,4 +1,3 @@
-
 package models
 
 import (
@@ -19,14 +18,15 @@ const (
 
 type User struct {
 	gorm.Model
-	ID                    uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
-	Name                  string    `gorm:"not null" json:"name"`
-	Username              string    `gorm:"unique;not null" json:"username"`
-	Email                 string    `gorm:"unique;not null" json:"email"`
-	Password              string    `gorm:"not null" json:"-"` // Never serialize password
-	Avatar                string    `json:"avatar"`
-	Role                  UserRole  `gorm:"type:varchar(20);not null;default:'guest'" json:"role"`
-	NewsletterSubscribed  bool      `gorm:"default:false" json:"newsletter_subscribed"`
+	ID                   uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	Name                 string    `gorm:"not null" json:"name"`
+	Username             string    `gorm:"unique;not null" json:"username"`
+	Email                string    `gorm:"unique;not null" json:"email"`
+	Password             string    `gorm:"not null" json:"-"` // Never serialize password
+	Avatar               string    `json:"avatar"`
+	Role                 UserRole  `gorm:"type:varchar(20);not null;default:'guest'" json:"role"`
+	NewsletterSubscribed bool      `gorm:"default:false" json:"newsletter_subscribed"`
+	Exclusive            bool      `gorm:"default:false" json:"exclusive"`
 }
 
 type PasswordResetToken struct {
