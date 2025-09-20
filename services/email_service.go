@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"log"
 	"net/smtp"
-	"os"
 
 	"github.com/hidenkeys/motiv-backend/models"
 )
@@ -235,21 +234,26 @@ func (e *ZohoEmailService) generateTicketConfirmationContent(ticket *models.Tick
         
         {{if .Ticket.QRCode}}
         <div class="qr-code">
-            <h3>📱 Your QR Code</h3>
-            <p>Show this QR code at the event entrance:</p>
-            <img src="data:image/png;base64,{{.Ticket.QRCode}}" alt="QR Code" style="max-width: 200px;">
+            <h3>📱 Your Entry Code</h3>
+            <p>Please show this code at the event entrance:</p>
+            
+            <!-- Try to show QR image, but provide fallback -->
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="data:image/png;base64,{{.Ticket.QRCode}}" alt="QR Code" style="max-width: 200px; height: auto; border: 2px solid #ddd; padding: 10px; background: white;">
+            </div>
+            
             {{if .Ticket.QRData}}
-            <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin: 15px 0; text-align: left;">
-                <p style="margin: 0 0 10px 0; font-weight: bold; color: #495057;">QR Code Data:</p>
-                <p style="font-family: monospace; font-size: 12px; word-break: break-all; margin: 0; color: #6c757d; background: white; padding: 8px; border-radius: 3px;">{{.Ticket.QRData}}</p>
-                <p style="margin: 10px 0 0 0; font-size: 11px; color: #6c757d;">You can also manually enter this code if QR scanning is not available.</p>
+            <div style="background: #e8f5e8; border: 2px solid #28a745; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+                <p style="margin: 0 0 15px 0; font-weight: bold; color: #155724; font-size: 16px;">🎫 Entry Code:</p>
+                <p style="font-family: monospace; font-size: 18px; font-weight: bold; word-break: break-all; margin: 10px 0; color: #155724; background: white; padding: 15px; border-radius: 5px; border: 1px solid #28a745;">{{.Ticket.QRData}}</p>
+                <p style="margin: 15px 0 0 0; font-size: 13px; color: #155724;">Show this code to event staff if QR scanning is not available</p>
             </div>
             {{end}}
         </div>
         {{end}}
         
         <div style="margin: 30px 0; text-align: center;">
-            <a href="{{.AppURL}}/my-raves" class="btn">View My Tickets</a>
+            <a href="{{.AppURL}}/my-events" class="btn">View My Tickets</a>
         </div>
         
         <div class="footer">
@@ -288,11 +292,11 @@ Email: {{.Ticket.AttendeeEmail}}
 {{if .Ticket.PaymentReference}}Payment Reference: {{.Ticket.PaymentReference}}{{end}}
 {{if .Ticket.QRData}}
 
-QR CODE DATA: {{.Ticket.QRData}}
-(You can manually enter this code if QR scanning is not available)
+🎫 ENTRY CODE: {{.Ticket.QRData}}
+(Show this code to event staff for entry)
 {{end}}
 
-Please save this email and bring your QR code to the event.
+Please save this email and bring your entry code to the event.
 
 Need help? Contact us at support@motivevents.com
 
@@ -308,7 +312,7 @@ Need help? Contact us at support@motivevents.com
 		Ticket: ticket,
 		Event:  event,
 		User:   user,
-		AppURL: os.Getenv("FRONTEND_URL"),
+		AppURL: "https://motiv.ng",
 	}
 
 	// Generate HTML content
@@ -433,7 +437,7 @@ Keep up the great work! Your event is gaining traction.
 		Event:  event,
 		User:   user,
 		Host:   host,
-		AppURL: os.Getenv("FRONTEND_URL"),
+		AppURL: "https://motiv.ng",
 	}
 
 	// Generate HTML content
@@ -545,7 +549,7 @@ If you have any questions, contact us at support@motivevents.com
 	}{
 		User:       user,
 		ResetToken: resetToken,
-		AppURL:     os.Getenv("FRONTEND_URL"),
+		AppURL:     "https://motiv.ng",
 	}
 
 	// Generate HTML content
@@ -663,12 +667,6 @@ If you have any questions, feel free to reach out to our support team.
 
 © 2025 Motiv Events. All rights reserved.`
 
-	// Get app URL from environment or use default
-	appURL := os.Getenv("APP_URL")
-	if appURL == "" {
-		appURL = "https://motiv.events"
-	}
-
 	// Data for template
 	data := struct {
 		Name     string
@@ -679,7 +677,7 @@ If you have any questions, feel free to reach out to our support team.
 		Name:     user.Name,
 		Username: user.Username,
 		Email:    user.Email,
-		AppURL:   appURL,
+		AppURL:   "https://motiv.ng",
 	}
 
 	// Generate HTML content
