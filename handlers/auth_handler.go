@@ -62,18 +62,6 @@ func isValidUsername(username string) bool {
 	return usernameRegex.MatchString(username)
 }
 
-// Helper function to validate username format
-func isValidUsername(username string) bool {
-	username = strings.TrimSpace(username)
-	if len(username) < 3 || len(username) > 30 {
-		return false
-	}
-
-	// Username can only contain letters, numbers, and underscores
-	usernameRegex := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
-	return usernameRegex.MatchString(username)
-}
-
 // Signup handles user registration
 func (h *AuthHandler) Signup(c *fiber.Ctx) error {
 	var signupReq models.SignupRequest
