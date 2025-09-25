@@ -2,12 +2,14 @@
 package services
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/hidenkeys/motiv-backend/models"
 	"github.com/hidenkeys/motiv-backend/repository"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type UserService interface {
@@ -45,15 +47,22 @@ func (s *userService) CreateUser(user *models.User) error {
 	return s.userRepo.CreateUser(user)
 }
 
+// Export error variables so they can be used by handlers
+var ErrUserNotFound = errors.New("user not found")
+var ErrInvalidPassword = errors.New("invalid password")
+
 func (s *userService) LoginUser(email, password string) (*models.User, error) {
 	user, err := s.userRepo.GetUserByEmail(email)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
 		return nil, err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return nil, err
+		return nil, ErrInvalidPassword
 	}
 
 	return user, nil

@@ -29,7 +29,7 @@ func (e *BrevoEmailService) generateWelcomeEmailContent(user *models.User) (stri
         </div>
         
         <div class="content">
-            <p>We're excited to have you join our community of event enthusiasts! Whether you're looking to discover amazing events or host your own, Motiv is here to make it happen</p>
+            <p>We're excited to have you join our community of event enthusiasts! Whether you're looking to discover amazing events or host your own, Motiv is here to make it happen.</p>
             
             <div class="highlight">
                 <strong>Your Account Details:</strong><br>
