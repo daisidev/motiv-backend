@@ -58,8 +58,15 @@ func (h *UserHandler) UpdateMe(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 	}
 
-	currentUser.Name = updateUser.Name
-	currentUser.Avatar = updateUser.Avatar
+	// Update only non-empty fields to avoid overwriting existing data
+	if updateUser.Name != "" {
+		currentUser.Name = updateUser.Name
+	}
+	if updateUser.Avatar != "" {
+		currentUser.Avatar = updateUser.Avatar
+	}
+	// Always update newsletter subscription since it's a boolean (false is valid)
+	currentUser.NewsletterSubscribed = updateUser.NewsletterSubscribed
 
 	if err := h.userService.UpdateUser(currentUser); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update user"})

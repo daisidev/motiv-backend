@@ -63,6 +63,7 @@ func main() {
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 	attendeeHandler := handlers.NewAttendeeHandler(attendeeService, eventService)
 	adminHandler := handlers.NewAdminHandler(userService, paymentService, eventService, ticketService)
+	newsletterHandler := handlers.NewNewsletterHandler(userService)
 
 	// Create Fiber app
 	app := fiber.New()
@@ -171,6 +172,11 @@ func main() {
 	ticket.Post("/purchase", ticketHandler.PurchaseTicket)
 	ticket.Post("/rsvp", ticketHandler.RSVPFreeEvent)
 	ticket.Post("/regenerate-qr", ticketHandler.RegenerateQRCodes) // Development endpoint
+
+	// Newsletter routes (public)
+	newsletter := api.Group("/newsletter")
+	newsletter.Post("/subscribe", newsletterHandler.Subscribe)
+	newsletter.Post("/unsubscribe", newsletterHandler.Unsubscribe)
 
 	// Admin routes
 	admin := api.Group("/admin")
