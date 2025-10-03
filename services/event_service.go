@@ -36,6 +36,7 @@ type EventService interface {
 	GetSearchSuggestions(query string, limit int) ([]string, error)
 	GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models.Event, error)
 	GetPopularEvents(limit int) ([]*models.Event, error)
+	GetEventAttendeeCount(eventID uuid.UUID) (int, error)
 	UpdateEvent(event *models.Event) error
 	DeleteEvent(id uuid.UUID) error
 }
@@ -95,6 +96,10 @@ func (s *eventService) GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models
 
 func (s *eventService) GetPopularEvents(limit int) ([]*models.Event, error) {
 	return s.eventRepo.GetPopularEvents(limit)
+}
+
+func (s *eventService) GetEventAttendeeCount(eventID uuid.UUID) (int, error) {
+	return s.eventRepo.GetEventAttendeeCount(eventID)
 }
 
 func (s *eventService) DeleteEvent(id uuid.UUID) error {

@@ -90,6 +90,10 @@ func (r *ticketRepoPG) GetTicketTypeByID(id uuid.UUID) (*models.TicketType, erro
 	return &ticketType, nil
 }
 
+func (r *ticketRepoPG) UpdateTicketType(ticketType *models.TicketType) error {
+	return r.db.Save(ticketType).Error
+}
+
 func (r *ticketRepoPG) UpdateSoldQuantity(ticketTypeID uuid.UUID, quantity int) error {
 	return r.db.Model(&models.TicketType{}).
 		Where("id = ?", ticketTypeID).

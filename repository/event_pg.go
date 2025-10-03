@@ -225,11 +225,8 @@ func (r *eventRepoPG) GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models.
 func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
 	var events []*models.Event
 	
-	// Get popular events based on multiple factors:
-	// 1. Events with more views/engagement
-	// 2. Recent events (not too old)
-	// 3. Events with tickets sold
-	// 4. Shuffle the results to provide variety
+	// Get latest events (most recently created)
+	// Show newest events first to keep content fresh
 	
 	// First, let's check total count in database
 	var totalCount int64
@@ -239,7 +236,7 @@ func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
 		// Temporarily removed filters to show all events for testing
 		// Where("start_date >= NOW()"). // Only future events
 		// Where("status = ?", "active"). // Only active events
-		Order("RANDOM()"). // Shuffle the results
+		Order("created_at DESC"). // Show latest events first
 		Limit(limit).
 		Find(&events).Error
 	
@@ -254,6 +251,15 @@ func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
 	}
 	
 	return events, nil
+}
+
+func (r *eventRepoPG) GetEventAttendeeCount(eventID uuid.UUID) (int, error) {
+	var count int64
+	err := r.db.Table("attendees").Where("event_id = ?", eventID).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }
 
 func (r *eventRepoPG) DeleteEvent(id uuid.UUID) error {

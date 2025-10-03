@@ -38,8 +38,9 @@ func (a *attendeeRepoPG) Create(attendee *models.Attendee) error {
 
 func (a *attendeeRepoPG) GetByID(id uuid.UUID) (*models.Attendee, error) {
 	var attendee models.Attendee
-	err := a.db.Preload("User").Preload("Event").Preload("Ticket").
-		First(&attendee, "id = ?", id).Error
+	// Use Where().First() to ensure fresh query and properly load relations
+	err := a.db.Preload("User").Preload("Event").Preload("Ticket").Preload("Ticket.TicketType").
+		Where("id = ?", id).First(&attendee).Error
 	return &attendee, err
 }
 

@@ -14,6 +14,7 @@ type EventRepository interface {
 	GetSearchSuggestions(query string, limit int) ([]string, error)
 	GetSimilarEvents(eventID uuid.UUID, limit int) ([]*models.Event, error)
 	GetPopularEvents(limit int) ([]*models.Event, error)
+	GetEventAttendeeCount(eventID uuid.UUID) (int, error)
 	UpdateEvent(event *models.Event) error
 	DeleteEvent(id uuid.UUID) error
 }

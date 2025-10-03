@@ -194,8 +194,14 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 		}, nil
 	}
 
+	// Log the current status for debugging
+	log.Printf("🔍 CHECK-IN DEBUG: Attendee %s - Current Status: %s, EventID: %s", 
+		targetAttendee.ID.String(), targetAttendee.Status, eventID.String())
+
 	// Check if already checked in
 	if targetAttendee.Status == models.AttendeeCheckedIn {
+		log.Printf("⚠️ CHECK-IN: Attendee %s already checked in at %v", 
+			targetAttendee.ID.String(), targetAttendee.CheckedInAt)
 		return &CheckInResult{
 			Success: false,
 			Message: "Already checked in",
@@ -214,6 +220,7 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 
 	// Check if cancelled
 	if targetAttendee.Status == models.AttendeeCancelled {
+		log.Printf("❌ CHECK-IN: Ticket %s has been cancelled", ticket.ID.String())
 		return &CheckInResult{
 			Success: false,
 			Message: "Ticket has been cancelled",
@@ -230,16 +237,26 @@ func (s *attendeeService) CheckInByQRCode(qrCode string, eventID, checkedInBy uu
 	}
 
 	// Check in the attendee
+	log.Printf("📝 CHECK-IN: Attempting to check in attendee %s for event %s", 
+		targetAttendee.ID.String(), eventID.String())
+	
 	err = s.attendeeRepo.CheckInAttendee(targetAttendee.ID, checkedInBy)
 	if err != nil {
+		log.Printf("❌ CHECK-IN ERROR: Failed to update attendee status: %v", err)
 		return nil, err
 	}
 
-	// Get updated attendee
+	log.Printf("✅ CHECK-IN SUCCESS: Attendee %s checked in successfully", targetAttendee.ID.String())
+
+	// Get updated attendee with fresh data from database
 	updatedAttendee, err := s.attendeeRepo.GetByID(targetAttendee.ID)
 	if err != nil {
+		log.Printf("⚠️ CHECK-IN WARNING: Could not retrieve updated attendee: %v", err)
 		return nil, err
 	}
+
+	log.Printf("✅ CHECK-IN COMPLETE: Attendee %s - New Status: %s, CheckedInAt: %v", 
+		updatedAttendee.ID.String(), updatedAttendee.Status, updatedAttendee.CheckedInAt)
 
 	return &CheckInResult{
 		Success: true,

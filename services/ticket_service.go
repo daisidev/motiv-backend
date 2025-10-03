@@ -22,6 +22,7 @@ type TicketService interface {
 	CreateTicketType(ticketType *models.TicketType) error
 	GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error)
 	GetTicketTypeByID(ticketTypeID uuid.UUID) (*models.TicketType, error)
+	UpdateTicketType(ticketType *models.TicketType) error
 	UpdateSoldQuantity(ticketTypeID uuid.UUID, quantity int) error
 }
 
@@ -98,6 +99,10 @@ func (s *ticketService) CreateTicketWithQR(ticket *models.Ticket) error {
 
 func (s *ticketService) GetTicketTypeByID(ticketTypeID uuid.UUID) (*models.TicketType, error) {
 	return s.ticketRepo.GetTicketTypeByID(ticketTypeID)
+}
+
+func (s *ticketService) UpdateTicketType(ticketType *models.TicketType) error {
+	return s.ticketRepo.UpdateTicketType(ticketType)
 }
 
 func (s *ticketService) UpdateSoldQuantity(ticketTypeID uuid.UUID, quantity int) error {

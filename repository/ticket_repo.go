@@ -13,10 +13,11 @@ type TicketRepository interface {
 	GetTicketByID(id uuid.UUID) (*models.Ticket, error)
 	GetByID(id uuid.UUID) (*models.Ticket, error)
 	GetByQRCode(qrCode string) (*models.Ticket, error)
-	
+
 	// Ticket Type methods
 	CreateTicketType(ticketType *models.TicketType) error
 	GetTicketTypesByEventID(eventID uuid.UUID) ([]*models.TicketType, error)
 	GetTicketTypeByID(id uuid.UUID) (*models.TicketType, error)
+	UpdateTicketType(ticketType *models.TicketType) error
 	UpdateSoldQuantity(ticketTypeID uuid.UUID, quantity int) error
 }

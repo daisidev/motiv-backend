@@ -29,13 +29,14 @@ type Event struct {
 	Latitude            *float64       `json:"latitude,omitempty"`
 	Longitude           *float64       `json:"longitude,omitempty"`
 	PlaceID             *string        `json:"place_id,omitempty"`
-	Tags                pq.StringArray `gorm:"type:text[]" json:"tags"`
+	Tags                pq.StringArray `gorm:"type:text[];" json:"tags"`
 	BannerImageURL      string         `json:"banner_image_url"`
 	EventType           string         `gorm:"type:varchar(20);not null;default:'ticketed'" json:"event_type"` // "ticketed" or "free"
 	HostID              uuid.UUID      `gorm:"type:uuid;not null" json:"host_id"`
 	Host                User           `gorm:"foreignKey:HostID" json:"host"`
 	TicketTypes         []TicketType   `gorm:"foreignKey:EventID" json:"ticket_types,omitempty"`
 	Status              EventStatus    `gorm:"type:varchar(20);not null;default:'active'" json:"status"`
+	AttendeeCount       int            `gorm:"-" json:"attendee_count"` // Computed field, not stored in DB
 }
 
 func (e *Event) BeforeCreate(tx *gorm.DB) (err error) {

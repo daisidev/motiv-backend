@@ -140,7 +140,7 @@ func (h *TicketHandler) RSVPFreeEvent(c *fiber.Ctx) error {
 				Name:          "Free Entry",
 				Price:         0,
 				Description:   "Free admission to this event",
-				TotalQuantity: 1000, // Default capacity for free events
+				TotalQuantity: 100, // Default capacity for free events
 				SoldQuantity:  0,
 			}
 

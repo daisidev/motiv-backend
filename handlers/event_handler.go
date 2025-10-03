@@ -90,6 +90,17 @@ func (h *EventHandler) GetMyEvents(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get events"})
 	}
 
+	// Populate attendee count for each event
+	for i, event := range events {
+		count, countErr := h.eventService.GetEventAttendeeCount(event.ID)
+		if countErr == nil {
+			events[i].AttendeeCount = count
+		} else {
+			log.Printf("Failed to get attendee count for event %s: %v", event.ID.String(), countErr)
+			events[i].AttendeeCount = 0
+		}
+	}
+
 	return c.JSON(events)
 }
 
@@ -207,12 +218,18 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 		newEvent.TicketTypes = ticketTypes
 	case "free":
 		// Create a default free ticket type for free events
+		// Use provided capacity or default to 100
+		capacity := 100 // Default capacity for free events
+		if len(req.TicketTypes) > 0 && req.TicketTypes[0].TotalQuantity > 0 {
+			capacity = req.TicketTypes[0].TotalQuantity
+		}
+		
 		freeTicketType := models.TicketType{
 			EventID:       newEvent.ID,
 			Name:          "Free Entry",
 			Price:         0,
 			Description:   "Free admission to this event",
-			TotalQuantity: 1000, // Default capacity for free events
+			TotalQuantity: capacity,
 			SoldQuantity:  0,
 		}
 
@@ -321,6 +338,32 @@ func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 	} else {
 		// Default to active for updates if no status is specified
 		event.Status = models.ActiveEvent
+	}
+
+	// Update ticket types if provided
+	if req.TicketTypes != nil && len(req.TicketTypes) > 0 {
+		// Get existing ticket types for the event
+		existingTicketTypes, err := h.ticketService.GetTicketTypesByEventID(eventID)
+		if err == nil && len(existingTicketTypes) > 0 {
+			// For free events, update the capacity of the first (and only) ticket type
+			if req.EventType == "free" && req.TicketTypes[0].TotalQuantity > 0 {
+				freeTicketType := existingTicketTypes[0]
+				// Only allow updates if new capacity is greater than or equal to sold quantity
+				if req.TicketTypes[0].TotalQuantity >= freeTicketType.SoldQuantity {
+					freeTicketType.TotalQuantity = req.TicketTypes[0].TotalQuantity
+					if err := h.ticketService.UpdateTicketType(freeTicketType); err != nil {
+						log.Printf("Error updating free ticket type capacity: %v", err)
+					} else {
+						log.Printf("Updated free ticket type capacity to %d", freeTicketType.TotalQuantity)
+					}
+				} else {
+					log.Printf("Cannot reduce capacity below sold quantity: sold=%d, requested=%d", 
+						freeTicketType.SoldQuantity, req.TicketTypes[0].TotalQuantity)
+				}
+			}
+			// For ticketed events, handle ticket type updates
+			// TODO: Implement full ticket type CRUD for ticketed events if needed
+		}
 	}
 
 	if err := h.eventService.UpdateEvent(event); err != nil {

@@ -246,7 +246,7 @@ func (e *ZohoEmailService) generateTicketConfirmationContent(ticket *models.Tick
             <div style="background: #e8f5e8; border: 2px solid #28a745; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
                 <p style="margin: 0 0 15px 0; font-weight: bold; color: #155724; font-size: 16px;">🎫 Entry Code:</p>
                 <p style="font-family: monospace; font-size: 18px; font-weight: bold; word-break: break-all; margin: 10px 0; color: #155724; background: white; padding: 15px; border-radius: 5px; border: 1px solid #28a745;">{{.Ticket.QRData}}</p>
-                <p style="margin: 15px 0 0 0; font-size: 13px; color: #155724;">Show this code to event staff if QR scanning is not available</p>
+                <p style="margin: 15px 0 0 0; font-size: 13px; color: #155724;"><strong>💡 Important:</strong> Copy the entire code including the "MOTIV-" prefix. This code can be used for manual entry at the event if QR scanning is unavailable.</p>
             </div>
             {{end}}
         </div>
@@ -293,7 +293,9 @@ Email: {{.Ticket.AttendeeEmail}}
 {{if .Ticket.QRData}}
 
 🎫 ENTRY CODE: {{.Ticket.QRData}}
-(Show this code to event staff for entry)
+
+💡 IMPORTANT: Copy the entire code including the "MOTIV-" prefix.
+This code can be used for manual entry at the event if QR scanning is unavailable.
 {{end}}
 
 Please save this email and bring your entry code to the event.
