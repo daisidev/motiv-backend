@@ -91,15 +91,19 @@ func (h *EventHandler) GetMyEvents(c *fiber.Ctx) error {
 	}
 
 	// Populate attendee count for each event
+	log.Printf("📊 GetMyEvents: Processing %d events to populate attendee counts", len(events))
 	for i, event := range events {
+		log.Printf("🔍 Event %d: ID=%s, Title=%s", i+1, event.ID.String(), event.Title)
 		count, countErr := h.eventService.GetEventAttendeeCount(event.ID)
 		if countErr == nil {
 			events[i].AttendeeCount = count
+			log.Printf("✅ Event %s: Attendee count = %d", event.Title, count)
 		} else {
-			log.Printf("Failed to get attendee count for event %s: %v", event.ID.String(), countErr)
+			log.Printf("❌ Failed to get attendee count for event %s: %v", event.ID.String(), countErr)
 			events[i].AttendeeCount = 0
 		}
 	}
+	log.Printf("📤 GetMyEvents: Returning %d events with attendee counts populated", len(events))
 
 	return c.JSON(events)
 }

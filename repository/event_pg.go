@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -255,10 +256,13 @@ func (r *eventRepoPG) GetPopularEvents(limit int) ([]*models.Event, error) {
 
 func (r *eventRepoPG) GetEventAttendeeCount(eventID uuid.UUID) (int, error) {
 	var count int64
+	log.Printf("🔢 GetEventAttendeeCount: Counting attendees for event %s", eventID.String())
 	err := r.db.Table("attendees").Where("event_id = ?", eventID).Count(&count).Error
 	if err != nil {
+		log.Printf("❌ GetEventAttendeeCount: Error counting attendees: %v", err)
 		return 0, err
 	}
+	log.Printf("✅ GetEventAttendeeCount: Found %d attendees for event %s", count, eventID.String())
 	return int(count), nil
 }
 
