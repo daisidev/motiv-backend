@@ -588,15 +588,15 @@ func (e *ZohoEmailService) generateWelcomeEmailContent(user *models.User) (strin
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
         .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .header { text-align: center; margin-bottom: 30px; }
-        .logo { font-size: 28px; font-weight: bold; color: #6366f1; margin-bottom: 10px; }
+        .logo { font-size: 28px; font-weight: bold; color: #D72638; margin-bottom: 10px; }
         .welcome-title { font-size: 24px; color: #333; margin-bottom: 20px; }
         .content { color: #666; line-height: 1.6; margin-bottom: 30px; }
-        .highlight { background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6366f1; }
+        .highlight { background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D72638; }
         .features { margin: 20px 0; }
         .feature { margin: 10px 0; padding-left: 20px; position: relative; }
         .feature:before { content: "✓"; position: absolute; left: 0; color: #10b981; font-weight: bold; }
         .cta { text-align: center; margin: 30px 0; }
-        .button { display: inline-block; background-color: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .button { display: inline-block; background-color: #D72638; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; }
         .footer { text-align: center; color: #999; font-size: 14px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
     </style>
 </head>
